@@ -1,0 +1,2083 @@
+# Copyright 2014 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/ohos/copy_ex.gni")
+import("//build/config/python.gni")
+import("//build/config/sanitizers/sanitizers.gni")
+import("//build/ohos/notice/notice.gni")
+import("//build/ohos_var.gni")
+import("//build/templates/metadata/module_info.gni")
+import("//build_plugins/config/aosp/config.gni")
+
+# Do not add any imports to non-//build directories here.
+# Some projects (e.g. V8) do not have non-build directories DEPS'ed in.
+import("//build/misc/overrides/build.gni")
+declare_args() {
+  maple_java_target_allowlist = [
+    "*:*maple_java",
+    "*:*java_maple",
+    "*:*java_so",
+    "*:*_so_java",
+    "*:*maple_java__java_test",
+    "*:*java_maple__java_test",
+    "*:*java_so__java_test",
+    "*:*_so_java__java_test",
+  ]
+
+  resources_target_allowlist = [
+    "*:*_resources",
+    "*:*_resource",
+    "*:*_res",
+  ]
+
+  assets_target_allowlist = [ "*:*_assets" ]
+
+  # These identify targets that have .build_config files (except for ohos_app,
+  # java_binary, resource_rewriter, ohos_app_bundle since we never need to
+  # depend on these).
+  java_target_allowlist = [
+    "*:*_java",
+    "*:*_javalib",
+    "*:*_java_*",  # e.g. java_test_support
+    "*:java",
+    "*:junit",
+    "*:junit_*",
+    "*:*_junit_*",
+    "*:*javatests",
+    "*:*_assets",
+    "*:*_apk_*resources",
+    "*:*_resources",
+    "*:*_res",
+    "*:*_grd",
+    "*:*locale_paks",
+    "*:*_demo",
+    "*_module",
+    "*_hap*",
+  ]
+
+  # Targets that match the allowlist but are not actually java targets.
+  java_target_blocklist = [ "*:*_unpack_aar" ]
+}
+
+if (is_android) {
+  # Write to a file some GN vars that are useful to scripts that use the output
+  # directory. Format is chosen as easily importable by both python and bash.
+  CR = "$0x0A"
+  _data = ""
+  _data += "aosp_sdk_build_tools=" +
+           rebase_path(aosp_sdk_build_tools, root_build_dir) + CR
+  _data += "aosp_sdk_build_tools_version=$aosp_sdk_build_tools_version$CR"
+  _data += "aosp_sdk_tools_version_suffix=$aosp_sdk_tools_version_suffix$CR"
+  _data += "aosp_sdk_root=" + rebase_path(aosp_sdk_root, root_build_dir) + CR
+  _data += "aosp_sdk_version=$aosp_sdk_version$CR"
+  _data += "aosp_ndk_root=" + rebase_path(aosp_ndk_root, root_build_dir) + CR
+  _data +=
+      "aosp_tool_prefix=" + rebase_path(aosp_tool_prefix, root_build_dir) + CR
+  if (defined(aosp_secondary_abi_cpu)) {
+    _secondary_label_info =
+        get_label_info(":foo($aosp_secondary_abi_toolchain)", "root_out_dir")
+    _data += "aosp_secondary_abi_toolchain=" +
+             rebase_path(_secondary_label_info, root_build_dir) + CR
+  }
+  if (defined(build_app_secondary_abi)) {
+    _data += "build_app_secondary_abi=$build_app_secondary_abi" + CR
+  }
+  write_file(aosp_build_vars, _data)
+}
+
+# Write the target's .build_config file. This is a json file that contains a
+# dictionary of information about how to build this target (things that
+# require knowledge about this target's dependencies and cannot be calculated
+# at gn-time). There is a special syntax to add a value in that dictionary to
+# an action/action_foreachs args:
+#   --python-arg=@FileArg($rebased_build_config_path:key0:key1)
+# At runtime, such an arg will be replaced by the value in the build_config.
+# See build_plugins/templates/java/write_build_config.py and
+# build_plugins/templates/java/util/build_utils.py:expand_file_args
+template("write_build_config") {
+  _type = invoker.type
+
+  # Don't need to enforce naming scheme for these targets since we never
+  # consider them in dependency chains.
+  if (_type != "aosp_app" && _type != "java_binary" &&
+      _type != "resource_rewriter" && _type != "dist_jar" &&
+      _type != "java_annotation_processor" && _type != "dist_aar" &&
+      _type != "aosp_app_bundle") {
+    _parent_invoker = invoker.invoker
+    _target_label =
+        get_label_info(":${_parent_invoker.target_name}", "label_no_toolchain")
+    sources = filter_exclude([ _target_label ], java_target_allowlist)
+    if (sources != []) {
+      sources = []
+      sources = filter_exclude([ _target_label ], java_target_blocklist)
+      if (sources != []) {
+        assert(false, "Invalid java target name: $_target_label")
+      }
+    }
+    sources = []
+  }
+  action_with_pydeps(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "testonly",
+                           ])
+    if (!defined(deps)) {
+      deps = []
+    }
+    if (defined(invoker.hap_profile_dep)) {
+      deps += [ invoker.hap_profile_dep ]
+    }
+
+    script = "//build_plugins/templates/java/write_build_config.py"
+    depfile = "$target_gen_dir/$target_name.d"
+    inputs = []
+    outputs = [ invoker.build_config ]
+
+    _deps_configs = []
+    if (defined(invoker.possible_config_deps)) {
+      foreach(_possible_dep, invoker.possible_config_deps) {
+        _target_label = get_label_info(_possible_dep, "label_no_toolchain")
+        sources = filter_exclude([ _target_label ], java_target_allowlist)
+        if (sources == []) {
+          # Filter out maple_java targets and blocklist targets.
+          sources = []
+          sources = filter_exclude(
+                  [ _target_label ],
+                  java_target_blocklist + maple_java_target_allowlist)
+          if (sources != []) {
+            _dep_label_toolchain = get_label_info(_possible_dep, "toolchain")
+            deps += [ "${_target_label}__build_config($_dep_label_toolchain)" ]
+            _dep_gen_dir = get_label_info(_possible_dep, "target_gen_dir")
+            _dep_name = get_label_info(_possible_dep, "name")
+            _deps_configs += [ "$_dep_gen_dir/$_dep_name.build_config" ]
+            inputs += [ "$_dep_gen_dir/$_dep_name.build_config" ]
+          }
+        }
+        sources = []
+      }
+    }
+    _rebased_deps_configs = rebase_path(_deps_configs, root_build_dir)
+
+    args = [
+      "--type=$_type",
+      "--depfile",
+      rebase_path(depfile, root_build_dir),
+      "--deps-configs=$_rebased_deps_configs",
+      "--build-config",
+      rebase_path(invoker.build_config, root_build_dir),
+    ]
+
+    if (defined(invoker.jar_path)) {
+      args += [
+        "--jar-path",
+        rebase_path(invoker.jar_path, root_build_dir),
+      ]
+    }
+    if (defined(invoker.unprocessed_jar_path)) {
+      args += [
+        "--unprocessed-jar-path",
+        rebase_path(invoker.unprocessed_jar_path, root_build_dir),
+      ]
+    }
+    if (defined(invoker.ijar_path)) {
+      args += [
+        "--interface-jar-path",
+        rebase_path(invoker.ijar_path, root_build_dir),
+      ]
+    }
+    if (defined(invoker.java_resources_jar)) {
+      args += [
+        "--java-resources-jar-path",
+        rebase_path(invoker.java_resources_jar, root_build_dir),
+      ]
+    }
+    if (defined(invoker.annotation_processor_deps)) {
+      _processor_configs = []
+      foreach(_processor_dep, invoker.annotation_processor_deps) {
+        _target_label = get_label_info(_processor_dep, "label_no_toolchain")
+        _dep_gen_dir = get_label_info(_processor_dep, "target_gen_dir")
+        _dep_name = get_label_info(_processor_dep, "name")
+        _dep_label_toolchain = get_label_info(_processor_dep, "toolchain")
+        deps += [ "${_target_label}__build_config($_dep_label_toolchain)" ]
+        _processor_configs += [ "$_dep_gen_dir/$_dep_name.build_config" ]
+        inputs += [ "$_dep_gen_dir/$_dep_name.build_config" ]
+      }
+      _rebased_processor_configs =
+          rebase_path(_processor_configs, root_build_dir)
+      args += [ "--annotation-processor-configs=$_rebased_processor_configs" ]
+    }
+
+    if (defined(invoker.dex_path)) {
+      args += [
+        "--dex-path",
+        rebase_path(invoker.dex_path, root_build_dir),
+      ]
+    }
+    if (defined(invoker.final_dex_path)) {
+      args += [
+        "--final-dex-path",
+        rebase_path(invoker.final_dex_path, root_build_dir),
+      ]
+    }
+    if (defined(invoker.supports_aosp) && invoker.supports_aosp) {
+      args += [ "--supports-aosp" ]
+    }
+    if (defined(invoker.requires_aosp) && invoker.requires_aosp) {
+      args += [ "--requires-aosp" ]
+    }
+    if (defined(invoker.is_prebuilt) && invoker.is_prebuilt) {
+      args += [ "--is-prebuilt" ]
+    }
+    if (defined(invoker.bypass_platform_checks) &&
+        invoker.bypass_platform_checks) {
+      args += [ "--bypass-platform-checks" ]
+    }
+
+    if (defined(invoker.app_under_test)) {
+      deps += [ "${invoker.app_under_test}__build_config" ]
+      app_under_test_gen_dir =
+          get_label_info(invoker.app_under_test, "target_gen_dir")
+      app_under_test_name = get_label_info(invoker.app_under_test, "name")
+      app_under_test_config =
+          "$app_under_test_gen_dir/$app_under_test_name.build_config"
+      args += [
+        "--tested-app-config",
+        rebase_path(app_under_test_config, root_build_dir),
+      ]
+    }
+
+    if (defined(invoker.asset_sources)) {
+      _rebased_asset_sources =
+          rebase_path(invoker.asset_sources, root_build_dir)
+      args += [ "--asset-sources=$_rebased_asset_sources" ]
+    }
+    if (defined(invoker.asset_renaming_sources)) {
+      _rebased_asset_renaming_sources =
+          rebase_path(invoker.asset_renaming_sources, root_build_dir)
+      args += [ "--asset-renaming-sources=$_rebased_asset_renaming_sources" ]
+
+      # These are zip paths, so no need to rebase.
+      args += [
+        "--asset-renaming-destinations=${invoker.asset_renaming_destinations}",
+      ]
+    }
+    if (defined(invoker.disable_compression) && invoker.disable_compression) {
+      args += [ "--disable-asset-compression" ]
+    }
+    if (defined(invoker.treat_as_locale_paks) && invoker.treat_as_locale_paks) {
+      args += [ "--treat-as-locale-paks" ]
+    }
+
+    if (defined(invoker.manifest)) {
+      inputs += [ invoker.manifest ]
+      args += [
+        "--manifest",
+        rebase_path(invoker.manifest, root_build_dir),
+      ]
+    }
+    if (defined(invoker.hap_profile)) {
+      inputs += [ invoker.hap_profile ]
+      args += [
+        "--hap_profile",
+        rebase_path(invoker.hap_profile, root_build_dir),
+      ]
+    }
+    if (defined(invoker.resources_zip)) {
+      args += [
+        "--resources-zip",
+        rebase_path(invoker.resources_zip, root_build_dir),
+      ]
+    }
+    if (defined(invoker.custom_package)) {
+      args += [
+        "--package-name",
+        invoker.custom_package,
+      ]
+    }
+    if (defined(invoker.r_text)) {
+      args += [
+        "--r-text",
+        rebase_path(invoker.r_text, root_build_dir),
+      ]
+    }
+
+    if (defined(invoker.resource_dirs)) {
+      resource_dirs = rebase_path(invoker.resource_dirs, root_build_dir)
+      args += [ "--resource-dirs=$resource_dirs" ]
+    }
+
+    if (defined(invoker.proto_resources_path)) {
+      _rebased_proto_resources =
+          rebase_path(invoker.proto_resources_path, root_build_dir)
+      args += [ "--app-proto-resources=$_rebased_proto_resources" ]
+    }
+
+    if (defined(invoker.module_rtxt_path)) {
+      _rebased_rtxt_path = rebase_path(invoker.module_rtxt_path, root_build_dir)
+      args += [ "--module-rtxt-path=$_rebased_rtxt_path" ]
+    }
+
+    if (defined(invoker.shared_libraries_runtime_deps_file)) {
+      # Don't list shared_libraries_runtime_deps_file as an input in order to
+      # avoid having to depend on the runtime_deps target. See comment in
+      # rules.gni for why we do this.
+      args += [
+        "--shared-libraries-runtime-deps",
+        rebase_path(invoker.shared_libraries_runtime_deps_file, root_build_dir),
+      ]
+    }
+
+    if (defined(invoker.loadable_modules) && invoker.loadable_modules != []) {
+      _rebased_modules = rebase_path(invoker.loadable_modules, root_build_dir)
+      args += [ "--native-libs=$_rebased_modules" ]
+    }
+
+    if (defined(invoker.extra_shared_libraries)) {
+      _rebased_extra_shared_libraries =
+          rebase_path(invoker.extra_shared_libraries, root_build_dir)
+      args += [ "--native-libs=$_rebased_extra_shared_libraries" ]
+    }
+
+    if (defined(invoker.secondary_abi_shared_libraries_runtime_deps_file)) {
+      # Don't list secondary_abi_shared_libraries_runtime_deps_file as an
+      # input in order to avoid having to depend on the runtime_deps target.
+      # See comment in rules.gni for why we do this.
+      args += [
+        "--secondary-abi-shared-libraries-runtime-deps",
+        rebase_path(invoker.secondary_abi_shared_libraries_runtime_deps_file,
+                    root_build_dir),
+      ]
+    }
+
+    if (defined(invoker.secondary_abi_loadable_modules) &&
+        invoker.secondary_abi_loadable_modules != []) {
+      _rebased_secondary_abi_modules =
+          rebase_path(invoker.secondary_abi_loadable_modules, root_build_dir)
+      args += [ "--secondary-native-libs=$_rebased_secondary_abi_modules" ]
+    }
+
+    if (defined(invoker.uncompress_shared_libraries) &&
+        invoker.uncompress_shared_libraries) {
+      args += [ "--uncompress-shared-libraries" ]
+    }
+
+    if (defined(invoker.app_path)) {
+      _rebased_app_path = rebase_path(invoker.app_path, root_build_dir)
+      _incremental_allowed =
+          defined(invoker.incremental_allowed) && invoker.incremental_allowed
+      args += [ "--app-path=$_rebased_app_path" ]
+      if (_incremental_allowed) {
+        _rebased_incremental_app_path =
+            rebase_path(invoker.incremental_app_path, root_build_dir)
+        _rebased_incremental_install_json_path =
+            rebase_path(invoker.incremental_install_json_path, root_build_dir)
+        args += [
+          "--incremental-install-json-path=$_rebased_incremental_install_json_path",
+          "--incremental-app-path=$_rebased_incremental_app_path",
+        ]
+      }
+    }
+
+    if (defined(invoker.java_sources_file)) {
+      args += [
+        "--java-sources-file",
+        rebase_path(invoker.java_sources_file, root_build_dir),
+      ]
+    }
+    if (defined(invoker.srcjar)) {
+      args += [
+        "--srcjar",
+        rebase_path(invoker.srcjar, root_build_dir),
+      ]
+    }
+    if (defined(invoker.bundled_srcjars)) {
+      _rebased_bundled_srcjars =
+          rebase_path(invoker.bundled_srcjars, root_build_dir)
+      args += [ "--bundled-srcjars=$_rebased_bundled_srcjars" ]
+    }
+    _classpath_deps_configs = []
+    if (defined(invoker.possible_config_deps)) {
+      foreach(_possible_dep, invoker.possible_config_deps) {
+        # If a java target depends on a maple target, it means classpath deps.
+        # Since so, mplts, and jar are already existed in system.img, why bother static deps?
+        _target_label = get_label_info(_possible_dep, "label_no_toolchain")
+        sources = []
+        sources = filter_exclude([ _target_label ], maple_java_target_allowlist)
+        if (sources == []) {
+          _dep_label_toolchain = get_label_info(_possible_dep, "toolchain")
+          deps += [ "${_target_label}__build_config($_dep_label_toolchain)" ]
+          _dep_gen_dir = get_label_info(_possible_dep, "target_gen_dir")
+          _dep_name = get_label_info(_possible_dep, "name")
+          _classpath_deps_configs += [ "$_dep_gen_dir/$_dep_name.build_config" ]
+          inputs += [ "$_dep_gen_dir/$_dep_name.build_config" ]
+        }
+      }
+      if (_classpath_deps_configs != []) {
+        _rebased_classpath_deps_configs =
+            rebase_path(_classpath_deps_configs, root_build_dir)
+        args += [ "--deps_mplt=@FileArg($_rebased_classpath_deps_configs:deps_info:deps_mplt)" ]
+      }
+      _rebased_classpath_deps_configs = []
+      sources = []
+    }
+    if (defined(invoker.classpath_deps)) {
+      foreach(d, invoker.classpath_deps) {
+        _target_label = get_label_info(d, "label_no_toolchain")
+        _dep_label_toolchain = get_label_info(d, "toolchain")
+        deps += [ "${_target_label}__build_config($_dep_label_toolchain)" ]
+        _dep_gen_dir = get_label_info(d, "target_gen_dir")
+        _dep_name = get_label_info(d, "name")
+        _classpath_deps_configs += [ "$_dep_gen_dir/$_dep_name.build_config" ]
+        inputs += [ "$_dep_gen_dir/$_dep_name.build_config" ]
+      }
+      _rebased_classpath_deps_configs =
+          rebase_path(_classpath_deps_configs, root_build_dir)
+      args += [ "--classpath-deps-configs=$_rebased_classpath_deps_configs" ]
+    }
+    if (defined(invoker.input_jars_paths)) {
+      _rebased_input_jars_paths =
+          rebase_path(invoker.input_jars_paths, root_build_dir)
+      args += [ "--extra-classpath-jars=$_rebased_input_jars_paths" ]
+    }
+    if (defined(invoker.proguard_enabled) && invoker.proguard_enabled) {
+      args += [ "--proguard-enabled" ]
+    }
+    if (defined(invoker.proguard_mapping_path)) {
+      _rebased_proguard_mapping_path =
+          rebase_path(invoker.proguard_mapping_path, root_build_dir)
+      args += [ "--proguard-mapping-path=$_rebased_proguard_mapping_path" ]
+    }
+    if (defined(invoker.proguard_configs)) {
+      _rebased_proguard_configs =
+          rebase_path(invoker.proguard_configs, root_build_dir)
+      args += [ "--proguard-configs=$_rebased_proguard_configs" ]
+    }
+    if (defined(invoker.gradle_treat_as_prebuilt) &&
+        invoker.gradle_treat_as_prebuilt) {
+      args += [ "--gradle-treat-as-prebuilt" ]
+    }
+    if (defined(invoker.main_class)) {
+      args += [
+        "--main-class",
+        invoker.main_class,
+      ]
+    }
+    if (defined(invoker.java_manifest_file)) {
+      args += [
+        "--manifest_file",
+        rebase_path(invoker.java_manifest_file, root_build_dir),
+      ]
+    }
+
+    if (defined(invoker.output_shared_library)) {
+      args += [
+        "--output_shared_library",
+        rebase_path(invoker.output_shared_library, root_build_dir),
+      ]
+    }
+    if (defined(invoker.output_mplt)) {
+      foreach(mplt, invoker.output_mplt) {
+        args += [
+          "--output_mplt",
+          rebase_path(mplt, root_build_dir),
+        ]
+      }
+    }
+    if (defined(invoker.maple_output_jar)) {
+      args += [
+        "--maple_output_jar",
+        rebase_path(invoker.maple_output_jar, root_build_dir),
+      ]
+    }
+    if (defined(invoker.dep_mplt)) {
+      args += [
+        "--dep_mplt",
+        rebase_path(invoker.dep_mplt, root_build_dir),
+      ]
+    }
+    if (defined(invoker.external_deps)) {
+      foreach(d, invoker.external_deps) {
+        args += [
+          "--external_deps",
+          d,
+        ]
+      }
+    }
+    if (defined(invoker.aosp_deps)) {
+      foreach(d, invoker.aosp_deps) {
+        args += [
+          "--aosp_deps",
+          d,
+        ]
+      }
+    } else if (defined(invoker.android_deps)) {
+      foreach(d, invoker.android_deps) {
+        args += [
+          "--aosp_deps",
+          d,
+        ]
+      }
+    }
+    if (defined(invoker.combine_target) && invoker.combine_target) {
+      args += [ "--combine_target" ]
+    }
+    if (defined(invoker.write_java_sources_file) &&
+        invoker.write_java_sources_file) {
+      args += [ "--write_java_sources_file" ]
+      outputs += [ invoker.java_sources_file ]
+    }
+    if (defined(invoker.is_hap) && invoker.is_hap) {
+      args += [ "--is_hap" ]
+    }
+    if (defined(invoker.jni_output_dir)) {
+      args += [
+        "--jni-output-dir",
+        rebase_path(invoker.jni_output_dir, root_build_dir),
+      ]
+    }
+  }
+}
+
+if (enable_java_templates) {
+  if (is_android || is_ohos) {
+    aosp_default_aapt_path =
+        "${ANDROID_HOME}/build-tools/$aosp_sdk_build_tools_version/aapt"
+    aosp_default_aapt2_path =
+        "${ANDROID_HOME}/build-tools/$aosp_sdk_build_tools_version/aapt2"
+  }
+
+  # Variables:
+  #  testonly:
+  #  build_config:
+  #  input_jar_path:
+  #  output_jar_path:
+  #  enable_build_hooks:
+  #  emma_instrument:
+  #  jar_excluded_patterns: Optional list of .class file patterns to exclude
+  #    from the final .jar file.
+  #  jar_included_patterns: OPtional list of .class file patterns to include
+  #    in the final .jar file. jar_excluded_patterns take precedence over this.
+  #  strip_resource_classes:
+  #  deps:
+  #  java_files:
+  #  java_sources_file:
+  #  inputs:
+  #  data_deps:
+  #  visibility:
+  #
+  template("process_java_prebuilt") {
+    forward_variables_from(invoker, [ "testonly" ])
+
+    assert(invoker.build_config != "")
+    _build_config = invoker.build_config
+    _rebased_build_config = rebase_path(_build_config, root_build_dir)
+    assert(_rebased_build_config != "" || true)  # Mark used.
+
+    _input_jar_path = invoker.input_jar_path
+    _output_jar_path = invoker.output_jar_path
+
+    _emma_instrument = invoker.emma_instrument
+
+    _is_prebuilt = defined(invoker.is_prebuilt) && invoker.is_prebuilt
+    _enable_bytecode_checks = defined(invoker.enable_bytecode_checks) &&
+                              invoker.enable_bytecode_checks
+
+    # Release builds don't have asserts enabled, so they often will not run the
+    # bytecode rewriter. We are okay with having release builds not run the
+    # bytecode checks at all, since the dependency errors can be caught in debug
+    # mode.
+    not_needed([
+                 "_is_prebuilt",
+                 "_enable_bytecode_checks",
+               ])
+    if (defined(invoker.enable_bytecode_rewriter)) {
+      not_needed([
+                   "_enable_assert",
+                   "_enable_custom_resources",
+                   "_enable_thread_annotations",
+                 ])
+      _enable_bytecode_rewriter = invoker.enable_bytecode_rewriter
+    }
+
+    _jar_excluded_patterns = []
+    if (defined(invoker.jar_excluded_patterns)) {
+      _jar_excluded_patterns = invoker.jar_excluded_patterns
+    }
+    _jar_included_patterns = []
+    if (defined(invoker.jar_included_patterns)) {
+      _jar_included_patterns = invoker.jar_included_patterns
+    }
+    _strip_resource_classes = defined(invoker.strip_resource_classes) &&
+                              invoker.strip_resource_classes
+    _filter_jar = _jar_excluded_patterns != [] ||
+                  _jar_included_patterns != [] || _strip_resource_classes
+    _emma_excluded_patterns = []
+    if (defined(invoker.emma_excluded_patterns)) {
+      _emma_excluded_patterns = invoker.emma_excluded_patterns
+    }
+    _emma_included_patterns = []
+    if (defined(invoker.emma_included_patterns)) {
+      _emma_included_patterns = invoker.emma_included_patterns
+    }
+
+    _emma_filter_jar =
+        _emma_excluded_patterns != [] || _emma_included_patterns != []
+
+    _deps = []
+    _previous_output_jar = _input_jar_path
+
+    if (_filter_jar) {
+      _filter_target = "${target_name}__filter"
+      _filter_input_jar = _previous_output_jar
+      _filter_output_jar = "$target_out_dir/$target_name-filtered.jar"
+
+      action_with_pydeps(_filter_target) {
+        script = "//build_plugins/templates/java/filter_zip.py"
+        deps = _deps
+        if (defined(invoker.deps)) {
+          deps += invoker.deps
+        }
+        inputs = [
+          _build_config,
+          _filter_input_jar,
+        ]
+        outputs = [ _filter_output_jar ]
+        args = [
+          "--input",
+          rebase_path(_filter_input_jar, root_build_dir),
+          "--output",
+          rebase_path(_filter_output_jar, root_build_dir),
+          "--exclude-globs=$_jar_excluded_patterns",
+          "--include-globs=$_jar_included_patterns",
+        ]
+        if (_strip_resource_classes) {
+          args += [ "--strip-resource-classes-for=@FileArg($_rebased_build_config:javac:resource_packages)" ]
+        }
+      }
+
+      _deps = []
+      _deps = [ ":$_filter_target" ]
+      _previous_output_jar = _filter_output_jar
+    }
+
+    if (_emma_instrument) {
+      _pre_emma_filter_jar = _previous_output_jar
+    }
+
+    if (_emma_filter_jar) {
+      _emma_filter_target = "${target_name}__emma_filter"
+      _emma_filter_input_jar = _previous_output_jar
+      _emma_filter_output_jar = "$target_out_dir/$target_name-emma-filtered.jar"
+
+      action_with_pydeps(_emma_filter_target) {
+        script = "//build_plugins/templates/java/filter_zip.py"
+        deps = _deps
+        if (defined(invoker.deps)) {
+          deps += invoker.deps
+        }
+        inputs = [
+          _build_config,
+          _emma_filter_input_jar,
+        ]
+        outputs = [ _emma_filter_output_jar ]
+        args = [
+          "--input",
+          rebase_path(_emma_filter_input_jar, root_build_dir),
+          "--output",
+          rebase_path(_emma_filter_output_jar, root_build_dir),
+          "--exclude-globs=$_emma_excluded_patterns",
+          "--include-globs=$_emma_included_patterns",
+        ]
+        if (_strip_resource_classes) {
+          args += [ "--strip-resource-classes-for=@FileArg($_rebased_build_config:javac:resource_packages)" ]
+        }
+      }
+
+      _deps = []
+      _deps = [ ":$_emma_filter_target" ]
+      _previous_output_jar = _emma_filter_output_jar
+    }
+
+    if (_emma_instrument) {
+      # Emma must run after desugar (or else desugar sometimes fails).
+      _emma_target = "${target_name}__emma"
+      _emma_input_jar = _previous_output_jar
+      _emma_output_jar = "$target_out_dir/$target_name-instrumented.jar"
+
+      emma_instr(_emma_target) {
+        deps = _deps
+        if (defined(invoker.deps)) {
+          deps += invoker.deps
+        }
+
+        forward_variables_from(invoker,
+                               [
+                                 "java_files",
+                                 "java_sources_file",
+                               ])
+
+        input_jar_path = _emma_input_jar
+        pre_emma_filter_jar_path = _pre_emma_filter_jar
+        output_jar_path = _emma_output_jar
+      }
+
+      _deps = []
+      _deps = [ ":$_emma_target" ]
+      _previous_output_jar = _emma_output_jar
+    }
+
+    _output_jar_target = "${target_name}__copy"
+
+    # This is copy_ex rather than copy to ensure that JARs (rather than
+    # possibly broken symlinks to them) get copied into the output
+    # directory.
+    copy_ex(_output_jar_target) {
+      forward_variables_from(invoker, [ "inputs" ])
+      deps = _deps
+      if (defined(invoker.deps)) {
+        deps += invoker.deps
+      }
+      dest = _output_jar_path
+      sources = [ _previous_output_jar ]
+      outputs = [ _output_jar_path ]
+    }
+
+    group(target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "data_deps",
+                               "visibility",
+                             ])
+      public_deps = [ ":$_output_jar_target" ]
+    }
+  }
+
+  # Compile Java source files into a .jar file, potentially using an
+  # annotation processor, and/or the errorprone compiler.
+  #
+  # Note that the only way to specify custom annotation processors is
+  # by using build_config to point to a file that corresponds to a java-related
+  # target that includes javac:processor_classes entries (i.e. there is no
+  # variable here that can be used for this purpose).
+  #
+  # Note also the peculiar use of java_files / java_sources_file. The content
+  # of the java_files list and the java_sources_file file must match exactly.
+  # This rule uses java_files only to list the inputs to the action that
+  # calls the javac.py script, but will pass the list of Java source files
+  # with the '@${java_sources_file}" command-line syntax. Not a problem in
+  # practice since this is only called from java_library_impl() that sets up
+  # the variables properly.
+  #
+  # Variables:
+  #  main_target_name: Used when extracting srcjars for codesearch.
+  #  java_files: Optional list of Java source file paths.
+  #  srcjar_deps: Optional list of .srcjar dependencies (not file paths).
+  #    The corresponding source files they contain will be compiled too.
+  #  srcjar_filearg: Optional @FileArg for additional srcjars.
+  #  java_sources_file: Optional path to file containing list of Java source
+  #    file paths. This must always be provided if java_files is not empty
+  #    and must match it exactly.
+  #  build_config: Path to the .build_config file of the corresponding
+  #    java_library_impl() target. The following entries will be used by this
+  #    template: javac:srcjars, deps_info:javac_full_classpath,
+  #    deps_info:javac_full_interface_classpath, javac:processor_classpath,
+  #    javac:processor_classes
+  #  javac_jar_path: Path to the final output .jar file.
+  #  javac_args: Optional list of extra arguments to pass to javac.
+  #  chromium_code: Whether this corresponds to Chromium-specific sources.
+  #  requires_aosp: True if these sources can only run on AOSP.
+  #  additional_jar_files: Optional list of files to copy into the resulting
+  #    .jar file (by default, only .class files are put there). Each entry
+  #    has the 'srcPath:dstPath' format.
+  #  enable_incremental_javac_override: Optional. If provided, determines
+  #    whether incremental javac compilation (based on jmake) is enabled.
+  #    Otherwise, decision is based on the global enable_incremental_javac
+  #    build arg variable.
+  #  enable_errorprone: Optional. If True, use the errorprone compiler to
+  #    check for error-prone constructs in the language. If not provided,
+  #    whether this is enabled depends on chromium_code and the global
+  #    use_errorprone_java_compiler variable.
+  #  app_name: Optional APP name. If provided, will tell javac.py to also
+  #    generate an .app.jar.info file under size-info/${app_name}.app.jar.info
+  #  provider_configurations: Optional list of paths to Java service
+  #    provider configuration files [1]. These will be copied under
+  #    META-INF/services/ in the final .jar file.
+  #  processor_args_javac: List of annotation processor arguments, each one
+  #    will be passed to javac as -A<entry>.
+  #  deps: Dependencies for the corresponding target.
+  #  testonly: Usual meaning (should be True for test-only targets)
+  #
+  # [1] https://docs.oracle.com/javase/7/docs/api/java/util/ServiceLoader.html
+  #
+  template("compile_java") {
+    forward_variables_from(invoker, [ "testonly" ])
+
+    _build_config = invoker.build_config
+    _chromium_code = invoker.chromium_code
+
+    #_is_host_library =
+    #    defined(invoker.is_host_library) && invoker.is_host_library
+    _is_base_library =
+        defined(invoker.is_base_library) && invoker.is_base_library
+
+    # force chromium_code to false
+    _chromium_code = false
+
+    _provider_configurations = []
+    if (defined(invoker.provider_configurations)) {
+      _provider_configurations = invoker.provider_configurations
+    }
+
+    _processor_args = []
+    if (defined(invoker.processor_args_javac)) {
+      _processor_args = invoker.processor_args_javac
+    }
+
+    _additional_jar_files = []
+    if (defined(invoker.additional_jar_files)) {
+      _additional_jar_files = invoker.additional_jar_files
+    }
+
+    _srcjar_deps = []
+    if (defined(invoker.srcjar_deps)) {
+      _srcjar_deps += invoker.srcjar_deps
+    }
+
+    _java_srcjars = []
+    foreach(dep, _srcjar_deps) {
+      _dep_gen_dir = get_label_info(dep, "target_gen_dir")
+      _dep_name = get_label_info(dep, "name")
+      _java_srcjars += [ "$_dep_gen_dir/$_dep_name.srcjar" ]
+    }
+
+    _javac_args = []
+    if (defined(invoker.javac_args)) {
+      _javac_args = invoker.javac_args
+    }
+
+    action_with_pydeps(target_name) {
+      script = "//build_plugins/templates/java/javac.py"
+      depfile = "$target_gen_dir/$target_name.d"
+      deps = _srcjar_deps
+      if (defined(invoker.deps)) {
+        deps += invoker.deps
+      }
+
+      outputs = [
+        invoker.javac_jar_path,
+        invoker.javac_jar_path + ".info",
+      ]
+      if (!pycache_enable) {
+        outputs += [ invoker.javac_jar_path + ".md5.stamp" ]
+      }
+      inputs = invoker.java_files + _java_srcjars + [ _build_config ]
+
+      if (invoker.java_files != []) {
+        inputs += [ invoker.java_sources_file ]
+      }
+
+      if (defined(invoker.sources_file)) {
+        outputs += [ invoker.sources_file ]
+      }
+
+      _rebased_build_config = rebase_path(_build_config, root_build_dir)
+      _rebased_javac_jar_path =
+          rebase_path(invoker.javac_jar_path, root_build_dir)
+      _rebased_java_srcjars = rebase_path(_java_srcjars, root_build_dir)
+      _rebased_depfile = rebase_path(depfile, root_build_dir)
+      _rebased_generated_dir = rebase_path(
+              "$target_gen_dir/${invoker.main_target_name}/generated_java",
+              root_build_dir)
+      args = [
+        "--depfile=$_rebased_depfile",
+        "--generated-dir=$_rebased_generated_dir",
+        "--jar-path=$_rebased_javac_jar_path",
+        "--java-srcjars=$_rebased_java_srcjars",
+        "--java-version=8",
+        "--jdk-version=9",
+        "--full-classpath=@FileArg($_rebased_build_config:deps_info:javac_full_classpath)",
+        "--interface-classpath=@FileArg($_rebased_build_config:deps_info:javac_full_interface_classpath)",
+        "--processorpath=@FileArg($_rebased_build_config:javac:processor_classpath)",
+        "--processors=@FileArg($_rebased_build_config:javac:processor_classes)",
+      ]
+
+      _test_target = defined(invoker.testonly) && invoker.testonly
+      if (((defined(invoker.android_deps) && invoker.android_deps != []) ||
+           (defined(invoker.aosp_deps) && invoker.aosp_deps != [])) &&
+          !_test_target) {
+        _all_aosp_import_target =
+            "//build/aosp_adapter/aosp_api_allowlists:all_aosp_imports"
+        deps += [ _all_aosp_import_target ]
+        _all_aosp_imports =
+            get_label_info(_all_aosp_import_target, "target_gen_dir") + "/" +
+            get_label_info(_all_aosp_import_target, "name") + ".txt"
+
+        args += [
+          "--api-allowlist-filename",
+          "java_api_allowlist.txt",
+          "--api-allowlist-top-dir",
+          rebase_path(get_label_info(":$target_name($default_toolchain)",
+                                     "root_gen_dir"),
+                      root_build_dir),
+          "--api-allowlist-search-dir",
+          rebase_path(get_label_info(":$target_name($default_toolchain)",
+                                     "target_gen_dir"),
+                      root_build_dir),
+          "--all-aosp-imports-file",
+          rebase_path(_all_aosp_imports, root_build_dir),
+        ]
+        inputs += [ _all_aosp_imports ]
+      }
+
+      if (defined(invoker.jdk_version) && invoker.jdk_version == "jdk8") {
+        args += [ "--jdkpath" ]
+        if (host_os == "mac") {
+          args +=
+              [ rebase_path("${aosp_prebuilts_dir}/jdk/jdk8/darwin-x86/bin/") ]
+        } else {
+          args +=
+              [ rebase_path("${aosp_prebuilts_dir}/jdk/jdk8/linux-x86/bin/") ]
+        }
+      } else {
+        args += [
+          "--jdkpath",
+          rebase_path(JAVA_HOME, root_build_dir),
+        ]
+      }
+
+      not_needed([ "_is_base_library" ])
+      if (is_ohos) {
+        not_needed([ "_is_host_library" ])
+      }
+      if (defined(invoker.srcjar_filearg)) {
+        args += [ "--java-srcjars=${invoker.srcjar_filearg}" ]
+      }
+      if (invoker.requires_aosp && !_is_base_library) {
+        args += [ "--bootclasspath=@FileArg($_rebased_build_config:aosp:sdk_interface_jars)" ]
+      }
+      foreach(e, _provider_configurations) {
+        args += [ "--provider-configuration=" + rebase_path(e, root_build_dir) ]
+        inputs += [ e ]
+      }
+      foreach(e, _processor_args) {
+        args += [ "--processor-arg=" + e ]
+      }
+
+      foreach(file_tuple, _additional_jar_files) {
+        # Each element is of length two, [ path_to_file, path_to_put_in_jar ]
+        inputs += [ file_tuple[0] ]
+        args +=
+            [ "--additional-jar-file=" +
+              rebase_path(file_tuple[0], root_build_dir) + ":" + file_tuple[1] ]
+      }
+      if (invoker.java_files != []) {
+        args += [ "@" + rebase_path(invoker.java_sources_file, root_build_dir) ]
+      }
+      foreach(e, _javac_args) {
+        args += [ "--javac-arg=" + e ]
+      }
+
+      if (defined(invoker.jni_output_dir)) {
+        args += [
+          "--javac-arg=-h",
+          "--javac-arg=" + rebase_path(invoker.jni_output_dir, root_build_dir),
+          "--jni-output-dir",
+          rebase_path(invoker.jni_output_dir, root_build_dir),
+        ]
+        outputs += [ invoker.jni_output_dir ]
+      }
+
+      if (defined(invoker.main_class)) {
+        args += [ "--main_class=" + invoker.main_class ]
+      }
+      if (defined(invoker.java_manifest_file)) {
+        args += [
+          "--manifest_file",
+          rebase_path(invoker.java_manifest_file, root_build_dir),
+        ]
+        inputs += [ invoker.java_manifest_file ]
+      }
+      if (defined(invoker.is_host_library) && invoker.is_host_library) {
+        args += [ "--is_host_library" ]
+      }
+      if (defined(invoker.ohos_code) && invoker.ohos_code) {
+        args += [ "--ohos-code" ]
+      }
+      if (defined(invoker.sources_file)) {
+        args += [
+          "--sources-file",
+          rebase_path(invoker.sources_file, root_build_dir),
+        ]
+      }
+      if (defined(invoker.javac_extra_output)) {
+        outputs += [ invoker.javac_extra_output ]
+      }
+    }
+  }
+
+  # Create an interface jar from a normal jar.
+  #
+  # Variables
+  #   input_jar: Path to input .jar.
+  #   output_jar: Path to output .ijar.
+  #
+  template("generate_interface_jar") {
+    action_with_pydeps(target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "data",
+                               "data_deps",
+                               "public_deps",
+                               "public_configs",
+                               "testonly",
+                               "visibility",
+                             ])
+      script = "//build_plugins/templates/java/ijar.py"
+
+      deps = []
+      if (defined(invoker.deps)) {
+        deps += invoker.deps
+      }
+      inputs = [ invoker.input_jar ]
+      if (defined(invoker.inputs)) {
+        inputs += invoker.inputs
+      }
+      outputs = [ invoker.output_jar ]
+      args = [
+        rebase_path(invoker.input_jar, root_build_dir),
+        rebase_path(invoker.output_jar, root_build_dir),
+      ]
+      if (defined(invoker.install_module_info)) {
+        metadata = {
+          install_modules = [ invoker.install_module_info ]
+        }
+      }
+    }
+  }
+
+  # Check whether classes in <jar_path> are in <package_name> packages.
+  #
+  # Variables:
+  #   package_names: list of allowed package names, default value:
+  #                  [ "ohos.*", "java.*" ]
+  #   jar_path: input jar file
+  template("check_package_name") {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "jar_path",
+                           ])
+    assert(defined(jar_path), "jar_path is necessary")
+
+    action_with_pydeps(target_name) {
+      package_names = ohos_package_names + openjdk_package_names
+      if (defined(invoker.package_names)) {
+        package_names += invoker.package_names
+      }
+      forward_variables_from(invoker, [ "deps" ])
+      script = "//build_plugins/templates/java/check_package.py"
+      depfile = "$target_gen_dir/$target_name.d"
+
+      _output = "$target_gen_dir/$target_name.output"
+      outputs = [ _output ]
+      args = [
+        "--package-names=${package_names}",
+        "--jar-path",
+        rebase_path(jar_path, root_build_dir),
+        "--depfile",
+        rebase_path(depfile, root_build_dir),
+        "--output",
+        rebase_path(_output, root_build_dir),
+      ]
+    }
+  }
+
+  # A rule that will handle multiple Java-related targets.
+  #
+  # The caller can provide a list of source files with 'java_files'
+  # and 'srcjar_deps', or a prebuilt .jar file through 'jar_path'.
+  #
+  # In the case of a 'java_binary' target type, it can even provide none of
+  # that (and the rule will just generate its wrapper script).
+  #
+  # The template will process the input .jar file (either the prebuilt one,
+  # or the result of compiling the sources), for example to apply Proguard,
+  # but also other ranges of bytecode-level rewriting schemes.
+  #
+  # Variables:
+  #  type: type of Java target, valid values: 'java_library', 'java_binary',
+  #    'junit_binary', 'java_annotation_processor', and 'aosp_app'
+  #  main_target_name: optional. If provided, overrides target_name when
+  #    creating sub-targets (e.g. "${main_target_name}__build_config") and
+  #    some output files (e.g. "${main_target_name}.sources"). Only used
+  #    for 'aosp_app' types at the moment, where main_target_name will
+  #    be the name of the main APP target.
+  #  supports_aosp: Optional. True if target can run on AOSP.
+  #  requires_aosp: Optional. True if target can only run on AOSP.
+  #  java_files: Optional list of Java source file paths for this target.
+  #  srcjar_deps: Optional list of .srcjar targets (not file paths). The Java
+  #    source files they contain will also be compiled for this target.
+  #  java_sources_file: Optional path to a file which will be written with
+  #    the content of java_files. If not provided, the file will be written
+  #    under $target_gen_dir/$main_target_name.sources. Ignored if
+  #    java_files is empty. If not
+  #  jar_path: Optional path to a prebuilt .jar file for this target.
+  #    Mutually exclusive with java_files and srcjar_deps.
+  #  final_jar_path: Optional path to the final output .jar file (after
+  #    processing). If not provided, the output will go under
+  #    $root_build_dir/lib.java/
+  #  output_name: Optional output name for the final jar path. Ignored if
+  #    final_jar_path is provided. Otherwise, used to determine the name
+  #    of the final jar. If not provided, the default is to use the same
+  #    name as jar_path, if provided, or main_target_name.
+  #  dex_path: Optional. Path to the output dex.jar file for this target.
+  #    Ignored if !supports_aosp.
+  #  main_class: Main Java class name for 'java_binary', 'junit_binary' and
+  #    'java_annotation_processor' target types. Should not be set for other
+  #    ones.
+  #  deps: Dependencies for this target.
+  #  testonly: True iff target should only be used for tests.
+  #  no_build_hooks: Disables bytecode rewriting of asserts and aosp
+  #    resources methods.
+  #  chromium_code: Optional. Whether this is Chromium-specific code. If not
+  #    provided, this is determined automatically, based on the location of
+  #    the source files (i.e. anything under third_party/ is not
+  #    Chromium-specific unless it is in a 'chromium' sub-directory).
+  #  emma_never_instrument: Optional. If provided, whether to forbid
+  #    instrumentation with the Emma coverage processor. If not provided,
+  #    this is controlled by the global emma_coverage build arg variable
+  #    and only used for non-test Chromium code.
+  #  alternative_aosp_sdk_dep: Optional. Alternative AOSP system
+  #    aosp java target to use.
+  #  annotation_processor_deps: Optional list of dependencies corresponding
+  #    to annotation processors used to compile these sources.
+  #  input_jars_paths: Optional list of additional .jar file paths, which will
+  #    be added to the compile-time classpath when building this target (but
+  #    not to the runtime classpath).
+  #  classpath_deps: Optional list of additional java library dependencies,
+  #    whose .jar files will be added to the compile-time classpath when
+  #    building this target (but not to the runtime classpath).
+  #  gradle_treat_as_prebuilt: Cause generate_gradle.py to reference this
+  #    library via its built .jar rather than including its .java sources.
+  #  proguard_enabled: Optional. True to enable ProGuard obfuscation.
+  #  proguard_configs: Optional list of additional proguard config file paths.
+  #  bypass_platform_checks: Optional. If True, platform checks will not
+  #    be performed. They are used to verify that every target with
+  #    requires_aosp only depends on targets that, at least supports_aosp.
+  #    Similarly, if a target has !supports_aosp, then it cannot depend on
+  #    any other target that has requires_aosp.
+  #  include_java_resources: Optional. If True, include Java (not AOSP)
+  #    resources into final .jar file.
+  #  lint_suppressions_file: Optional lint suppressions input file.
+  #  jar_excluded_patterns: Optional list of .class file patterns to exclude
+  #    from the final .jar file.
+  #  jar_included_patterns: Optional list of .class file patterns to include
+  #    in the final .jar file. jar_excluded_patterns take precedence over this.
+  #
+  # For 'aosp_app' and 'aosp_app_bundle_module' targets only:
+  #
+  #  app_path: Path to the final APP file.
+  #  manifest: Path to AndroidManifest.xml file for the APP.
+  #  app_under_test: For 'aosp_app' targets used to test other APPs,
+  #    this is the target name of APP being tested.
+  #  incremental_allowed: Optional (default false). True to allow the
+  #    generation of incremental APPs ('aosp_app' targets only).
+  #  incremental_app_path: If incremental_allowed, path to the incremental
+  #    output APP.
+  #  incremental_install_json_path: If incremental_allowed, path to the output
+  #    incremental install json configuration file.
+  #  proguard_mapping_path: Path to .mapping file produced from ProGuard step.
+  #  shared_libraries_runtime_deps_file: Optional. Path to a file listing the
+  #    native shared libraries required at runtime by the APP.
+  #  secondary_abi_shared_libraries_runtime_deps_file:
+  #  extra_shared_libraries: Optional list of extra native libraries to
+  #    be stored in the APP.
+  #  uncompress_shared_libraries: Optional. True to store native shared
+  #    libraries uncompressed and page-aligned.
+  #  proto_resources_path: The path of an zip archive containing the APP's
+  #    resources compiled to the protocol buffer format (instead of regular
+  #    binary xml + resources.arsc).
+  #  module_rtxt_path: The path of the R.txt file generated when compiling the
+  #    resources for the bundle module.
+  #
+  # For 'java_binary' and 'junit_binary' targets only. Ignored by others:
+  #
+  #  bootclasspath: Optional list of boot class paths used by the generated
+  #    wrapper script.
+  #  wrapper_script_name: Optional name for the generated wrapper script.
+  #    Default is main target name.
+  #  wrapper_script_args: Optional list of extra arguments used by the
+  #    generated wrapper script.
+  #
+  template("java_library_impl") {
+    _config_compatibility = false
+    if (defined(invoker.subsystem_name) && defined(invoker.part_name)) {
+      _subsystem_name = invoker.subsystem_name
+      _part_name = invoker.part_name
+    } else if (defined(invoker.subsystem_name)) {
+      _subsystem_name = invoker.subsystem_name
+      _part_name = _subsystem_name
+    } else if (defined(invoker.part_name)) {
+      _part_name = invoker.part_name
+      _part_subsystem_info_file =
+          "$root_build_dir/build_configs/parts_info/part_subsystem.json"
+      _arguments = [
+        "--part-name",
+        _part_name,
+        "--part-subsystem-info-file",
+        rebase_path(_part_subsystem_info_file, root_build_dir),
+      ]
+      get_subsystem_script = "//build/templates/common/get_subsystem_name.py"
+      _subsystem_name =
+          exec_script(get_subsystem_script, _arguments, "trim string")
+    } else {
+      _subsystem_name = "common"
+      _part_name = _subsystem_name
+      _config_compatibility = true
+    }
+    assert(_subsystem_name != "")
+    assert(_part_name != "")
+    assert(_config_compatibility || !_config_compatibility)
+
+    _gen_jni_headers =
+        defined(invoker.generate_jni_headers) && invoker.generate_jni_headers
+    if (_gen_jni_headers) {
+      _jni_output_dir = "$target_gen_dir/$target_name/jni_headers"
+    }
+    forward_variables_from(invoker, [ "testonly" ])
+    if (defined(invoker.verbose)) {
+      not_needed(invoker, [ "verbose" ])
+    }
+    _is_prebuilt = defined(invoker.jar_path)
+    _is_test_target = defined(invoker.testonly) && invoker.testonly
+    assert(_is_test_target != "")  # Mark as used.
+    _is_host_library =
+        defined(invoker.is_host_library) && invoker.is_host_library
+    assert(_is_host_library != "")  # Mark as used.
+    _is_annotation_processor = invoker.type == "java_annotation_processor"
+    _is_java_binary =
+        invoker.type == "java_binary" || invoker.type == "junit_binary"
+    _is_system_library = invoker.type == "system_java_library"
+    _supports_aosp = defined(invoker.supports_aosp) && invoker.supports_aosp
+    _requires_aosp = defined(invoker.requires_aosp) && invoker.requires_aosp
+
+    _main_target_name = target_name
+    if (defined(invoker.main_target_name)) {
+      _main_target_name = invoker.main_target_name
+    }
+    _java_files = []
+    if (defined(invoker.java_files)) {
+      _java_files = invoker.java_files
+    }
+
+    _srcjar_deps = []
+    if (defined(invoker.srcjar_deps)) {
+      _srcjar_deps = invoker.srcjar_deps
+    }
+
+    _has_sources = _java_files != [] || _srcjar_deps != []
+
+    if (_is_prebuilt) {
+      assert(!_has_sources)
+    } else {
+      # Allow java_binary to not specify any sources. This is needed when a prebuilt
+      # is needed as a library as well as a binary.
+      assert(_is_annotation_processor || _is_java_binary || _has_sources)
+    }
+
+    if (_is_java_binary) {
+      assert(defined(invoker.main_class),
+             "${invoker.type}() must set main_class")
+    } else if (_is_annotation_processor) {
+      assert(defined(invoker.main_class),
+             "java_annotation_processor() must set main_class")
+    } else {
+      if (invoker.type != "java_library") {
+        assert(!defined(invoker.main_class),
+               "main_class cannot be used for target of type ${invoker.type}")
+      }
+    }
+
+    # The only target that might have no prebuilt and no sources is a java_binary.
+    if (_is_prebuilt || _has_sources) {
+      # If do maple on CI server, then collect==true means this jar needs
+      # to be collected to generate zframework.jar before copy_modules.
+      # Note: dex jar will be installed directly if install is true,
+      # class jars will be installed directly, they are collected to generate
+      # zframework.jar, and zframework.jar (also a dex jar) will be installed.
+      _install_needed = defined(invoker.install) && invoker.install
+
+      # java_library targets will be collected as part of zframework in default.
+      if (defined(invoker.collect)) {
+        _collect_needed = invoker.collect
+      } else {
+        _collect_needed = !_install_needed
+      }
+
+      if (_is_host_library || _is_test_target || _is_annotation_processor ||
+          invoker.type != "java_library") {
+        _collect_needed = false
+      }
+
+      if (defined(invoker.output_name)) {
+        _output_name = invoker.output_name
+      } else if (_is_prebuilt) {
+        _output_name = get_path_info(invoker.jar_path, "name")
+      } else {
+        _output_name = _main_target_name
+      }
+
+      # Jar files can be needed at runtime (by Robolectric tests or java binaries),
+      # so do not put them under gen/.
+      _target_dir_name = get_label_info(":$_main_target_name", "dir")
+      if (_is_test_target) {
+        _final_jar_path =
+            "$root_out_dir/lib.java.test$_target_dir_name/$_output_name.jar"
+      } else if (_is_prebuilt) {
+        _final_jar_path =
+            "$root_out_dir/lib.java.prebuilt$_target_dir_name/" +
+            get_path_info(invoker.jar_path, "dir") + "/" + "$_output_name.jar"
+      } else {
+        if (_collect_needed || _install_needed) {
+          _final_jar_path = "$root_out_dir/lib.java.framework/" +
+                            "${_subsystem_name}/${_part_name}/$_output_name.jar"
+          if (_config_compatibility) {
+            _final_jar_path =
+                "$root_out_dir/lib.java$_target_dir_name/$_output_name.jar"
+          }
+          assert(_target_dir_name != "")
+        } else {
+          _final_jar_path =
+              "$root_out_dir/lib.java$_target_dir_name/$_output_name.jar"
+        }
+      }
+      if (defined(invoker.final_jar_path)) {
+        _final_jar_path = invoker.final_jar_path
+      }
+
+      if (defined(invoker.final_ijar_path)) {
+        _final_ijar_path = invoker.final_ijar_path
+      } else {
+        _final_ijar_path =
+            get_path_info(_final_jar_path, "dir") + "/" +
+            get_path_info(_final_jar_path, "name") + ".interface.jar"
+      }
+
+      if (_has_sources) {
+        _javac_jar_path = "$target_gen_dir/$_main_target_name.javac.jar"
+      }
+
+      if (_is_prebuilt) {
+        _unprocessed_jar_path = invoker.jar_path
+      } else {
+        _unprocessed_jar_path = _javac_jar_path
+      }
+
+      if (_supports_aosp) {
+        if (_install_needed || invoker.type == "aosp_app") {
+          _dex_path = "$target_gen_dir/$_main_target_name.z.jar"
+          if (defined(invoker.dex_path)) {
+            _dex_path = invoker.dex_path
+          }
+        } else {
+          if (defined(invoker.dex_path)) {
+            not_needed(invoker, [ "dex_path" ])
+          }
+        }
+      } else {
+        # Don't install host jars.
+        not_needed([ "_install_needed" ])
+      }
+    }
+
+    _accumulated_public_deps = []
+    if (defined(invoker.public_deps)) {
+      _accumulated_public_deps += invoker.public_deps
+    }
+
+    _accumulated_deps = []
+    if (defined(invoker.deps)) {
+      _accumulated_deps = invoker.deps
+    }
+
+    _classpath_deps = []
+    if (defined(invoker.classpath_deps)) {
+      _classpath_deps += invoker.classpath_deps
+    }
+
+    # Don't enable coverage or lint unless the target has some non-generated
+    # files.
+    if (defined(invoker.chromium_code)) {
+      _chromium_code = invoker.chromium_code
+
+      # force _chromium_code to false
+      _chromium_code = false
+    } else {
+      # Default based on whether target is in third_party.
+      _target_label = [ get_label_info(":$_main_target_name", "dir") ]
+      sources = filter_exclude(_target_label, [ "*\bthird_party\b*" ])
+      _chromium_code = sources != []
+      if (!_chromium_code && !_is_prebuilt && _java_files != []) {
+        # Unless third_party code has an org.chromium file in it.
+        sources = _java_files
+        sources = filter_exclude(_java_files, [ "*\bchromium\b*" ])
+        _chromium_code = _java_files != sources
+      }
+      sources = []
+    }
+
+    if (defined(_final_jar_path)) {
+      _emma_instrument = emma_coverage && _java_files != [] &&
+                         (!defined(invoker.testonly) || !invoker.testonly)
+      if (defined(invoker.emma_never_instrument)) {
+        _emma_instrument = !invoker.emma_never_instrument && _emma_instrument
+      }
+      not_needed([ "_emma_instrument" ])
+    }
+
+    if (_java_files != []) {
+      _java_sources_file = "$target_gen_dir/$_main_target_name.sources"
+      if (defined(invoker.java_sources_file)) {
+        _java_sources_file = invoker.java_sources_file
+      }
+      write_file(_java_sources_file, rebase_path(_java_files, root_build_dir))
+    }
+
+    if (_srcjar_deps != []) {
+      _sources_files = "$target_gen_dir/$_main_target_name.all.sources"
+    }
+    _include_aosp_sdk = !_is_system_library && _supports_aosp
+    if (_include_aosp_sdk) {
+      if (defined(invoker.alternative_aosp_sdk_dep)) {
+        _accumulated_deps += [ invoker.alternative_aosp_sdk_dep ]
+      } else {
+        if (is_double_framework) {
+          if (invoker.type == "aosp_app") {
+            _accumulated_deps +=
+                [ "//build/aosp_adapter/aosp_sdk:aosp_sdk_java" ]
+          } else {
+            # use aosp framework.jar for non-app build
+            _accumulated_deps +=
+                [ "//build/aosp_adapter/gn:system_framework_java" ]
+          }
+
+          # Non-test app and system test app use ohos sdk jar
+          # ohos sdk jar is used to replace external_deps for app targets.
+          _use_ohos_sdk_jar =
+              (!_is_test_target && invoker.type == "aosp_app") ||
+              (_is_test_target && defined(invoker.test_type) &&
+               invoker.test_type == "systemtest" && invoker.type == "aosp_app")
+
+          if (_use_ohos_sdk_jar) {
+            _classpath_deps += [
+              "//build/ohos/kits/system_api:phone_systemsdk_base_java($default_toolchain)",
+              "//third_party/openjdk_stubs:rt_java",
+            ]
+            if (target_platform != "phone") {
+              _classpath_deps += [ "//build/ohos/kits/system_api:${target_platform}_systemsdk_platform_java($default_toolchain)" ]
+            }
+          }
+        } else {
+          # use aosp android.jar and core-lambda-stubs.jar for non-app build
+          _accumulated_deps += [ "//build_plugins/config/aosp:aosp_sdk_java" ]
+          _accumulated_deps +=
+              [ "//build_plugins/config/aosp:core_lambda_stubs_java" ]
+        }
+      }
+    }
+
+    if (defined(invoker.external_deps) && invoker.external_deps != []) {
+      external_deps_script =
+          rebase_path("//build/templates/common/external_deps_handler.py")
+      external_deps_temp_file =
+          "$target_gen_dir/${target_name}_external_deps_temp.json"
+      arguments = [ "--external-deps" ]
+      arguments += invoker.external_deps
+      arguments += [
+        "--parts-src-flag-file",
+        rebase_path(parts_src_flag_file, root_build_dir),
+        "--external-deps-temp-file",
+        rebase_path(external_deps_temp_file, root_build_dir),
+        "--sdk-base-dir",
+        rebase_path("${innersdk_base_dir}", root_build_dir),
+        "--sdk-dir-name",
+        "${innersdk_dir_name}",
+        "--current-toolchain",
+        current_toolchain,
+      ]
+      if (is_use_sdk) {
+        arguments += [ "--use-sdk" ]
+      }
+
+      exec_script(external_deps_script, arguments)
+
+      external_deps_info = read_file(external_deps_temp_file, "json")
+      if (defined(external_deps_info.deps)) {
+        foreach(d, external_deps_info.deps) {
+          sources = []
+          _target_label = get_label_info(d, "label_no_toolchain")
+          sources = filter_exclude([ _target_label ], java_target_allowlist)
+          if (sources == []) {
+            # Filter out maple_java targets and blocklist targets.
+            sources = []
+            sources = filter_exclude(
+                    [ _target_label ],
+                    java_target_blocklist + maple_java_target_allowlist)
+            if (sources != []) {
+              _classpath_deps += [ d ]
+            }
+          }
+          sources = []
+        }
+        foreach(d, external_deps_info.deps) {
+          sources = []
+          _target_label = get_label_info(d, "label_no_toolchain")
+          sources =
+              filter_exclude([ _target_label ], maple_java_target_allowlist)
+          if (sources == []) {
+            _accumulated_deps += [ d ]
+            # [ get_label_info(d, "label_with_toolchain") ]
+          }
+          sources = []
+        }
+      }
+    }
+    if (defined(invoker.aosp_deps) && invoker.aosp_deps != []) {
+      aosp_deps_script =
+          rebase_path("//build_plugins/templates/common/aosp_deps_handler.py")
+      aosp_deps_temp_file =
+          "$target_gen_dir/${_main_target_name}_aosp_deps_temp.json"
+
+      arguments = []
+      arguments += [ "--aosp-deps" ]
+      arguments += invoker.aosp_deps
+      arguments += [
+        "--aosp-deps-temp-file",
+        rebase_path(aosp_deps_temp_file, root_build_dir),
+      ]
+      aosp_deps_info = exec_script(aosp_deps_script, arguments, "json")
+      foreach(d, aosp_deps_info) {
+        sources = []
+        _target_label = get_label_info(d.label, "label_no_toolchain")
+        sources = filter_exclude([ _target_label ], java_target_allowlist)
+        if (sources == []) {
+          # Filter out maple_java targets and blocklist targets.
+          sources = []
+          sources = filter_exclude(
+                  [ _target_label ],
+                  java_target_blocklist + maple_java_target_allowlist)
+          if (sources != []) {
+            _classpath_deps += [ _target_label ]
+          }
+        }
+        sources = []
+      }
+      foreach(d, aosp_deps_info) {
+        sources = []
+        _target_label = get_label_info(d.label, "label_no_toolchain")
+        sources = filter_exclude([ _target_label ], maple_java_target_allowlist)
+        if (sources == []) {
+          _accumulated_deps +=
+              [ get_label_info(_target_label, "label_no_toolchain") ]
+        }
+        sources = []
+      }
+    } else if (defined(invoker.android_deps) && invoker.android_deps != []) {
+      aosp_deps_script =
+          rebase_path("//build_plugins/templates/common/aosp_deps_handler.py")
+      aosp_deps_temp_file =
+          "$target_gen_dir/${_main_target_name}_aosp_deps_temp.json"
+
+      arguments = []
+      arguments += [ "--aosp-deps" ]
+      arguments += invoker.android_deps
+      arguments += [
+        "--aosp-deps-temp-file",
+        rebase_path(aosp_deps_temp_file, root_build_dir),
+      ]
+      aosp_deps_info = exec_script(aosp_deps_script, arguments, "json")
+      foreach(d, aosp_deps_info) {
+        sources = []
+        _target_label = get_label_info(d.label, "label_no_toolchain")
+        sources = filter_exclude([ _target_label ], java_target_allowlist)
+        if (sources == []) {
+          # Filter out maple_java targets and blocklist targets.
+          sources = []
+          sources = filter_exclude(
+                  [ _target_label ],
+                  java_target_blocklist + maple_java_target_allowlist)
+          if (sources != []) {
+            _classpath_deps += [ _target_label ]
+          }
+        }
+        sources = []
+      }
+      foreach(d, aosp_deps_info) {
+        sources = []
+        _target_label = get_label_info(d.label, "label_no_toolchain")
+        sources = filter_exclude([ _target_label ], maple_java_target_allowlist)
+        if (sources == []) {
+          _accumulated_deps +=
+              [ get_label_info(_target_label, "label_no_toolchain") ]
+        }
+        sources = []
+      }
+    }
+
+    # Define build_config_deps which will be a list of targets required to
+    # build the _build_config.
+    _build_config = "$target_gen_dir/$_main_target_name.build_config"
+    _build_config_target_name = "${_main_target_name}__build_config"
+
+    write_build_config(_build_config_target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "annotation_processor_deps",
+                               "gradle_treat_as_prebuilt",
+                               "input_jars_paths",
+                               "loadable_modules",
+                               "main_class",
+                               "java_manifest_file",
+                               "proguard_configs",
+                               "proguard_enabled",
+                               "proguard_mapping_path",
+                               "secondary_abi_loadable_modules",
+                               "type",
+                               "aosp_deps",
+                               "android_deps",
+                               "external_deps",
+                               "is_hap",
+                             ])
+      classpath_deps = _classpath_deps
+      if (type == "aosp_app") {
+        forward_variables_from(
+            invoker,
+            [
+              "manifest",
+              "extra_shared_libraries",
+              "final_dex_path",
+              "secondary_abi_shared_libraries_runtime_deps_file",
+              "shared_libraries_runtime_deps_file",
+              "uncompress_shared_libraries",
+              "app_path",
+              "app_under_test",
+              "incremental_allowed",
+              "incremental_app_path",
+              "incremental_install_json_path",
+            ])
+      }
+      build_config = _build_config
+      is_prebuilt = _is_prebuilt
+      possible_config_deps = _accumulated_deps
+      if (defined(app_under_test)) {
+        possible_config_deps += [ app_under_test ]
+      }
+      supports_aosp = _supports_aosp
+      requires_aosp = _requires_aosp
+      bypass_platform_checks = defined(invoker.bypass_platform_checks) &&
+                               invoker.bypass_platform_checks
+
+      if (defined(_final_jar_path)) {
+        jar_path = _final_jar_path
+        ijar_path = _final_ijar_path
+        unprocessed_jar_path = _unprocessed_jar_path
+      }
+      if (defined(_dex_path)) {
+        dex_path = _dex_path
+      }
+      if (_java_files != []) {
+        java_sources_file = _java_sources_file
+      }
+      if (_srcjar_deps != []) {
+        java_sources_file = _sources_files
+      }
+
+      bundled_srcjars = []
+      foreach(d, _srcjar_deps) {
+        _dep_gen_dir = get_label_info(d, "target_gen_dir")
+        _dep_name = get_label_info(d, "name")
+        bundled_srcjars += [ "$_dep_gen_dir/$_dep_name.srcjar" ]
+      }
+      if (defined(invoker.include_java_resources) &&
+          invoker.include_java_resources) {
+        if (defined(invoker.jar_path)) {
+          # Use original jar_path because _jar_path points to a library without
+          # resources.
+          java_resources_jar = invoker.jar_path
+        } else {
+          java_resources_jar = _final_jar_path
+        }
+      }
+      if (defined(_jni_output_dir)) {
+        jni_output_dir = _jni_output_dir
+      }
+    }
+    _accumulated_public_deps += [ ":$_build_config_target_name" ]
+
+    # Add module_info for java_library targets.
+    # module_info is used for sdk packaging.
+    if (_main_target_name != target_name) {
+      _copy_build_config = "$target_gen_dir/$target_name.build_config"
+      write_build_config("${target_name}__build_config") {
+        forward_variables_from(invoker,
+                               [
+                                 "annotation_processor_deps",
+                                 "gradle_treat_as_prebuilt",
+                                 "input_jars_paths",
+                                 "loadable_modules",
+                                 "main_class",
+                                 "java_manifest_file",
+                                 "proguard_configs",
+                                 "proguard_enabled",
+                                 "proguard_mapping_path",
+                                 "secondary_abi_loadable_modules",
+                                 "aosp_deps",
+                                 "android_dpes",
+                                 "external_deps",
+                               ])
+        type = "java_library"
+        classpath_deps = _classpath_deps
+        build_config = _copy_build_config
+        is_prebuilt = _is_prebuilt
+        possible_config_deps = _accumulated_deps
+        if (defined(app_under_test)) {
+          possible_config_deps += [ app_under_test ]
+        }
+        supports_aosp = _supports_aosp
+        requires_aosp = _requires_aosp
+        bypass_platform_checks = defined(invoker.bypass_platform_checks) &&
+                                 invoker.bypass_platform_checks
+
+        if (defined(_final_jar_path)) {
+          jar_path = _final_jar_path
+          ijar_path = _final_ijar_path
+          unprocessed_jar_path = _unprocessed_jar_path
+        }
+        if (defined(_dex_path)) {
+          dex_path = _dex_path
+        }
+
+        if (_java_files != []) {
+          java_sources_file = _java_sources_file
+        }
+        if (_srcjar_deps != []) {
+          java_sources_file = _sources_files
+        }
+
+        bundled_srcjars = []
+        foreach(d, _srcjar_deps) {
+          _dep_gen_dir = get_label_info(d, "target_gen_dir")
+          _dep_name = get_label_info(d, "name")
+          bundled_srcjars += [ "$_dep_gen_dir/$_dep_name.srcjar" ]
+        }
+        if (defined(invoker.include_java_resources) &&
+            invoker.include_java_resources) {
+          if (defined(invoker.jar_path)) {
+            # Use original jar_path because _jar_path points to a library without
+            # resources.
+            java_resources_jar = invoker.jar_path
+          } else {
+            java_resources_jar = _final_jar_path
+          }
+        }
+        if (defined(_jni_output_dir)) {
+          jni_output_dir = _jni_output_dir
+        }
+      }
+
+      _accumulated_public_deps += [ ":${target_name}__build_config" ]
+    }
+
+    # Don't need to depend on the app-under-test to be packaged.
+    if (defined(invoker.app_under_test)) {
+      _accumulated_deps += [ "${invoker.app_under_test}__java" ]
+    }
+    if (defined(invoker.annotation_processor_deps)) {
+      _accumulated_deps += invoker.annotation_processor_deps
+    }
+
+    if (_has_sources) {
+      _ohos_code = false
+      if (defined(invoker.ohos_code)) {
+        _ohos_code = invoker.ohos_code
+      }
+      if (defined(_jni_output_dir)) {
+        _jni_header_config = "${_main_target_name}__jni_headers"
+        config(_jni_header_config) {
+          include_dirs = [ _jni_output_dir ]
+        }
+      }
+      _compile_java_target = "${_main_target_name}__compile_java"
+      compile_java(_compile_java_target) {
+        forward_variables_from(invoker,
+                               [
+                                 "additional_jar_files",
+                                 "app_name",
+                                 "enable_errorprone",
+                                 "enable_incremental_javac_override",
+                                 "processor_args_javac",
+                                 "provider_configurations",
+                                 "javac_args",
+                                 "main_class",
+                                 "java_manifest_file",
+                                 "is_host_library",
+                                 "is_base_library",
+                                 "jdk_version",
+                                 "aosp_deps",
+                                 "android_deps",
+                               ])
+        ohos_code = _ohos_code
+        main_target_name = _main_target_name
+        build_config = _build_config
+        java_files = _java_files
+
+        if (_java_files != []) {
+          java_sources_file = _java_sources_file
+        }
+        if (_srcjar_deps != []) {
+          sources_file = _sources_files
+        }
+        srcjar_deps = _srcjar_deps
+        chromium_code = _chromium_code
+        requires_aosp = _requires_aosp
+        deps = _accumulated_deps + _accumulated_public_deps + _classpath_deps
+        javac_jar_path = _javac_jar_path
+
+        # aosp_app and junit_binary pass R.java srcjars via srcjar_deps.
+        if (invoker.type == "java_library" && _requires_aosp) {
+          _rebased_build_config = rebase_path(_build_config, root_build_dir)
+          srcjar_filearg = "@FileArg($_rebased_build_config:deps_info:owned_resource_srcjars)"
+        }
+        if (defined(_jni_output_dir)) {
+          jni_output_dir = _jni_output_dir
+        }
+      }
+      _accumulated_public_deps += [ ":$_compile_java_target" ]
+    }  # _has_sources
+
+    if ((_collect_needed || _install_needed || build_ohos_sdk) &&
+        !_is_test_target) {
+      _notice_target = "${_main_target_name}__notice"
+      collect_notice(_notice_target) {
+        forward_variables_from(invoker,
+                               [
+                                 "license_as_sources",
+                                 "license_file",
+                               ])
+        if (defined(invoker.deps)) {
+          deps = invoker.deps
+        }
+        module_type = "java_library"
+        module_name = _main_target_name
+        module_source_dir = get_label_info(":${_main_target_name}", "dir")
+      }
+      _accumulated_deps += [ ":$_notice_target" ]
+    }
+
+    if (defined(_final_jar_path)) {
+      if (_is_system_library) {
+        _copy_system_library_target_name = "${target_name}__copy_system_library"
+
+        # Use copy_ex rather than copy to ensure that we copy symlink targets
+        # rather than the symlink itself.
+        copy_ex(_copy_system_library_target_name) {
+          sources = [ _unprocessed_jar_path ]
+          dest = _final_jar_path
+          outputs = [ _final_jar_path ]
+        }
+        _accumulated_public_deps += [ ":$_copy_system_library_target_name" ]
+      } else {
+        _process_prebuilt_target_name = "${target_name}__process_prebuilt"
+        process_java_prebuilt(_process_prebuilt_target_name) {
+          forward_variables_from(invoker,
+                                 [
+                                   "enable_bytecode_checks",
+                                   "enable_bytecode_rewriter",
+                                   "jar_excluded_patterns",
+                                   "jar_included_patterns",
+                                   "emma_excluded_patterns",
+                                   "emma_included_patterns",
+                                 ])
+          is_prebuilt = _is_prebuilt
+
+          build_config = _build_config
+          input_jar_path = _unprocessed_jar_path
+          emma_instrument = _emma_instrument
+          if (_emma_instrument) {
+            java_files = _java_files
+            java_sources_file = _java_sources_file
+          }
+          output_jar_path = _final_jar_path
+          deps = _accumulated_deps + _accumulated_public_deps
+        }
+        _accumulated_public_deps += [ ":$_process_prebuilt_target_name" ]
+
+        if (defined(_dex_path)) {
+          _dex_target_name = "${target_name}__dex"
+          _dex_info_target = "${_dex_target_name}_info"
+
+          _install_images = [ "system" ]
+          if (defined(invoker.install_images)) {
+            _install_images = []
+            _install_images += invoker.install_images
+          }
+
+          _boot_jar_name = get_path_info(_dex_path, "name")
+          _boot_jar_install_dir = "framework"
+          if (defined(invoker.module_install_dir)) {
+            _boot_jar_install_dir = invoker.module_install_dir
+          }
+          _boot_jar_extension = "." + get_path_info(_dex_path, "extension")
+
+          dex_with_res(_dex_target_name) {
+            subsystem_name = _subsystem_name
+            part_name = _part_name
+            input_jars = [ _final_jar_path ]
+            dex_path = _dex_path
+            deps = [ ":$_process_prebuilt_target_name" ]
+            install_needed = _install_needed
+          }
+
+          _accumulated_public_deps += [ ":${_dex_target_name}" ]
+
+          generate_module_info(_dex_info_target) {
+            module_name = "$_dex_target_name"
+            module_type = "dex"
+            module_install_images = _install_images
+            module_install_dir = _boot_jar_install_dir
+            module_install_name = _boot_jar_name
+            module_source_dir = get_path_info(_dex_path, "dir")
+            module_output_extension = _boot_jar_extension
+          }
+          _accumulated_deps += [ ":$_dex_info_target" ]
+        }
+      }
+
+      if (!_is_java_binary) {
+        if (_collect_needed && _has_sources) {
+          # In general, all ohos jar files will be collected to zframework.z.jar.
+          # So only check package names for targets that _collect_needed=true
+          _package_check_target = "${_main_target_name}__check_package"
+          check_package_name(_package_check_target) {
+            deps = _accumulated_deps + _accumulated_public_deps
+            jar_path = _javac_jar_path
+          }
+          _accumulated_deps += [ ":$_package_check_target" ]
+        }
+
+        # Export the interface jar as the main target (rather than a group)
+        # so that ninja will notice when the output is unchanged and not rebuild
+        # reverse-dependencies. Targets that should be rebuilt when the
+        # non-interface .jar changes use a depfile to indicate that they should
+        # be rebuilt even when the interface jar does not change.
+        generate_interface_jar(target_name) {
+          forward_variables_from(invoker,
+                                 [
+                                   "data",
+                                   "data_deps",
+                                   "visibility",
+                                 ])
+
+          # Export all of our steps as "public", so that all outputs can be used
+          # as inputs to other targets.
+          public_deps = _accumulated_public_deps
+          deps = _accumulated_deps
+
+          if (defined(_jni_output_dir)) {
+            public_configs = [ ":$_jni_header_config" ]
+          }
+
+          # Always used the unfiltered .jar to create the interface jar so that
+          # other targets will resolve filtered classes when depending on
+          # BuildConfig, NativeLibraries, etc.
+          input_jar = _unprocessed_jar_path
+          output_jar = _final_ijar_path
+
+          # If jar needs to be collected, then generate install information.
+          if (_collect_needed) {
+            install_module_info = {
+              module_def =
+                  get_label_info(":$target_name", "label_with_toolchain")
+              module_info_file =
+                  rebase_path(get_label_info(module_def, "target_out_dir"),
+                              root_build_dir) +
+                  "/${target_name}_module_info.json"
+              subsystem_name = _subsystem_name
+              part_name = _part_name
+              toolchain = current_toolchain
+              toolchain_out_dir = rebase_path(root_out_dir, root_build_dir)
+            }
+          }
+        }
+      }
+    }
+
+    if (_is_java_binary) {
+      # Targets might use the generated script while building, so make it a dep
+      # rather than a data_dep.
+      java_binary_script("${target_name}__java_binary_script") {
+        forward_variables_from(invoker,
+                               [
+                                 "bootclasspath",
+                                 "main_class",
+                                 "wrapper_script_args",
+                               ])
+        build_config = _build_config
+        if (defined(_final_jar_path)) {
+          jar_path = _final_jar_path
+        }
+        script_name = _main_target_name
+        if (defined(invoker.wrapper_script_name)) {
+          script_name = invoker.wrapper_script_name
+        }
+        deps = _accumulated_public_deps
+      }
+      _accumulated_public_deps += [ ":${target_name}__java_binary_script" ]
+    }
+
+    if (_is_java_binary ||
+        (_is_annotation_processor && !defined(_final_jar_path))) {
+      group(target_name) {
+        forward_variables_from(invoker,
+                               [
+                                 "data",
+                                 "deps",
+                                 "data_deps",
+                                 "visibility",
+                               ])
+        public_deps = _accumulated_public_deps
+      }
+    }
+    if (invoker.type == "java_library" ||
+        invoker.type == "java_annotation_processor") {
+      generate_module_info("${_main_target_name}_info") {
+        module_name = _main_target_name
+        module_type = "java_library"
+
+        # For java_library target, collect==true means this jar
+        # needs to be collected as part of zframework.jar.
+        collect = false
+        install_enable = false
+        if (defined(_collect_needed)) {
+          collect = _collect_needed
+        }
+
+        if (defined(_install_needed)) {
+          install_enable = _install_needed
+        }
+        notice = "$target_out_dir/$_main_target_name.notice.txt"
+        if (defined(invoker.license_file) &&
+            get_path_info(invoker.license_file, "extension") == "zip") {
+          notice = "$target_out_dir/$_main_target_name.notice.zip"
+        }
+
+        module_install_name = get_path_info(_final_jar_path, "name")
+        module_source_dir = get_path_info(_final_jar_path, "dir")
+        module_output_extension = ".jar"
+        module_alt_output_extension = ".interface.jar"
+      }
+    }
+  }
+}

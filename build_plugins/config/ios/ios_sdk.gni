@@ -1,0 +1,60 @@
+# Copyright 2015 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+declare_args() {
+  # SDK path to use. When empty this will use the default SDK based on the
+  # value of use_ios_simulator.
+  ios_sdk_path = ""
+
+  # Set to true when targeting a simulator build on iOS. False means that the
+  # target is for running on the device. The default value is to use the
+  # Simulator except when targeting GYP's Xcode builds (for compat with the
+  # existing GYP build).
+  use_ios_simulator = false
+
+  # Version of iOS that we're targeting.
+  # 不适配9的原因，是因为，iOS9版本sdk 不支持 #include <shared_mutex>
+  ios_deployment_target = "10.0"
+
+  # The path to the iOS device SDK.
+  ios_device_sdk_path = ""
+
+  # The path to the iOS simulator SDK.
+  ios_simulator_sdk_path = ""
+
+  # Version of iOS that we're targeting for tests.
+  ios_testing_deployment_target = "13.0"
+}
+
+ios_sdk_args = []
+if (ios_device_sdk_path == "") {
+  ios_sdk_args += [
+    "--sdk",
+    "iphoneos",
+  ]
+  _ios_device_sdk_result = exec_script("ios_sdk.py", ios_sdk_args, "list lines")
+  ios_device_sdk_path = _ios_device_sdk_result[0]
+}
+
+if (ios_simulator_sdk_path == "") {
+  ios_sdk_args += [
+    "--sdk",
+    "iphonesimulator",
+  ]
+  _ios_sim_sdk_result = exec_script("ios_sdk.py", ios_sdk_args, "list lines")
+  ios_simulator_sdk_path = _ios_sim_sdk_result[0]
+}
+
+if (ios_sdk_path == "") {
+  # Compute default target.
+  if (use_ios_simulator) {
+    assert(ios_simulator_sdk_path != "")
+    ios_sdk_path = ios_simulator_sdk_path
+  } else {
+    assert(ios_device_sdk_path != "")
+    ios_sdk_path = ios_device_sdk_path
+  }
+}
+
+Xcode_version = exec_script("ios_sdk.py", [ "--xcode" ], "value")

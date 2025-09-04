@@ -1,0 +1,309 @@
+# Copyright 2014 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file contains common system config stuff for the AOSP build.
+
+# NOTE: Because Chrome OS builds may depend on targets built with the AOSP
+# toolchain, this GNI file may be read and processed from within Chrome OS
+# toolchains. Checking |is_android| here would therefore be too restrictive.
+
+if (is_android || is_chromeos) {
+  import("//build/misc/overrides/build.gni")
+  import("//build_plugins/config/aosp/abi.gni")
+
+  has_chrome_aosp_internal =
+      exec_script("//build/scripts/dir_exists.py",
+                  [ rebase_path("//clank", root_build_dir) ],
+                  "string") == "True"
+
+  # set Android and Java Env used to build Android Library.
+  ANDROID_HOME = getenv("ANDROID_HOME")
+  JAVA_HOME = getenv("JAVA_HOME") + "/bin"
+
+  # We are using a separate declare_args block for only this argument so that
+  # we can decide if we have to pull in definitions from the internal config
+  # early.
+  declare_args() {
+    # Enables using the internal Chrome for AOSP repository. The default
+    # value depends on whether the repository is available, and if it's not but
+    # this argument is manually set to True, the generation will fail.
+    # The main purpose of this argument is to avoid having to maintain 2
+    # repositories to support both public only and internal builds.
+    enable_chrome_aosp_internal = has_chrome_aosp_internal
+
+    # AOSP API level for 32 bits platforms
+    aosp32_ndk_api_level = 26
+
+    # AOSP API level for 64 bits platforms
+    aosp64_ndk_api_level = 26
+  }
+
+  if (enable_chrome_aosp_internal) {
+    import("//clank/config.gni")
+  } else {
+    import("//build_plugins/config/aosp/sdk.gni")
+    declare_args() {
+      # AOSP SDK release. Currently, only "o_mr1" is publicly supported.
+      aosp_sdk_release = default_aosp_sdk_release
+    }
+  }
+
+  if (!defined(extra_chrome_shared_library_configs)) {
+    extra_chrome_shared_library_configs = []
+  }
+  if (!defined(extra_chrome_shared_library_deps)) {
+    extra_chrome_shared_library_deps = []
+  }
+
+  if (!defined(default_aosp_ndk_root)) {
+    default_aosp_ndk_root = "${ANDROID_HOME}/ndk/21.3.6528147"
+    default_aosp_ndk_version = "r16"
+    default_aosp_ndk_major_version = 16
+  } else {
+    assert(defined(default_aosp_ndk_version))
+    assert(defined(default_aosp_ndk_major_version))
+  }
+
+  if (aosp_sdk_release == "o_mr1") {
+    default_aosp_sdk_root = "${ANDROID_HOME}"
+    default_aosp_sdk_version = 27
+    default_aosp_sdk_build_tools_version = "27.0.3"
+    default_aosp_sdk_tools_version_suffix = "-26.0.0-dev"
+    public_aosp_sdk = true
+  }
+
+  if (aosp_sdk_release == "p") {
+    default_aosp_sdk_root = "${ANDROID_HOME}"
+    default_aosp_sdk_version = 28
+    default_aosp_sdk_build_tools_version = "27.0.3"
+    default_aosp_sdk_tools_version_suffix = "-26.0.0-dev"
+    public_aosp_sdk = true
+  }
+
+  if (aosp_sdk_release == "q") {
+    default_aosp_sdk_root = "${ANDROID_HOME}"
+    default_aosp_sdk_version = 26
+    default_aosp_sdk_build_tools_version = "28.0.3"
+    default_aosp_sdk_tools_version_suffix = "-26.0.0-dev"
+    public_aosp_sdk = true
+  }
+
+  default_app_public_key_path =
+      "//build/proprietary/sign/huawei_apkkey_11v_testkey.x509.pem"
+  default_app_private_key_path = "huawei_apkkey_11v_testkey.pk8"
+
+  default_hapsigner = "//prebuilts/signcenter/hapsigntool/hapsigntoolv2.jar"
+  default_hap_signature_algorithm = "SHA256withECDSA"
+  default_hap_certificate_profile =
+      "//prebuilts/signcenter/hapsigntool/AppProvision.PROFILE"
+  default_hap_keystore_path = "//prebuilts/signcenter/key/OpenHarmony.p12"
+  default_hap_cert_path =
+      "//prebuilts/signcenter/certificates/OpenHarmonyApplication.pem"
+
+  assert(defined(default_aosp_sdk_root),
+         "SDK release " + aosp_sdk_release + " not recognized.")
+
+  declare_args() {
+    aosp_ndk_root = default_aosp_ndk_root
+    aosp_ndk_version = default_aosp_ndk_version
+    aosp_ndk_major_version = default_aosp_ndk_major_version
+
+    aosp_sdk_root = default_aosp_sdk_root
+    aosp_sdk_version = default_aosp_sdk_version
+    aosp_sdk_build_tools_version = default_aosp_sdk_build_tools_version
+    aosp_sdk_tools_version_suffix = default_aosp_sdk_tools_version_suffix
+
+    # Libc++ library directory. Override to use a custom libc++ binary.
+    aosp_libcpp_lib_dir = ""
+
+    aosp_default_version_code = "1"
+    aosp_default_version_name = "Developer Build"
+
+    # The public/private key of app signer.
+    hmf_app_public_key_path = default_app_public_key_path
+    hmf_app_private_key_path = default_app_private_key_path
+    hmf_appsigner = "//vendor/huawei/signcenter/z_client/SignApkOnline.jar"
+
+    hmf_hap_private_key_path = "HOS Application Provision Release"
+    hmf_hap_certificate_profile =
+        "//vendor/huawei/signcenter/z_client/components/AppProvision.PROFILE"
+    hmf_hapsigner = "//vendor/huawei/signcenter/z_client/SignClient.jar"
+    hmf_hapsigner_component = "//vendor/huawei/signcenter/z_client/components"
+    hmf_hapsigner_compmentlist =
+        "//vendor/huawei/signcenter/z_client/components/componentlist.json"
+
+    # Java debug on AOSP. Having this on enables multidexing, and turning it
+    # off will enable proguard.
+    is_java_debug = is_debug
+
+    # Report Java assert failure on AOSP. Turning it on will report Java
+    # assert failure without crash.
+    report_java_assert = false
+
+    # Mark APKs as aosp:debuggable="true".
+    debuggable_apps = !is_official_build
+
+    # Set to false to disable the Errorprone compiler
+    use_errorprone_java_compiler = true
+
+    # EMMA filter string consisting of a list of inclusion/exclusion patterns
+    # separated with whitespace and/or comma. Only has effect if
+    # emma_coverage==true
+    emma_filter = ""
+
+    # Disables process isolation when building _incremental targets.
+    # Required for AOSP M+ due to SELinux policies (stronger sandboxing).
+    disable_incremental_isolated_processes = false
+
+    # Speeds up incremental compiles by compiling only changed files.
+    enable_incremental_javac = false
+
+    # Build incremental targets whenever possible.
+    incremental_app_by_default = false
+
+    update_aosp_aar_prebuilts = false
+    disable_aosp_lint = false
+
+    # Location of aapt2 binary used for app bundles. For now, a more recent version
+    # than the one distributed with the AOSP SDK is required.
+    aosp_sdk_tools_bundle_aapt2 = "//third_party/aosp_build_tools/aapt2/aapt2"
+
+    # Path to r8.jar. If specified, will be used instead of ProGuard for optimization.
+    experimental_r8_path = ""
+  }
+
+  # We need a second declare_args block to make sure we are using the overridden
+  # value of the arguments set above.
+  declare_args() {
+    if (defined(default_aosp_sdk_platform_version)) {
+      aosp_sdk_platform_version = default_aosp_sdk_platform_version
+    } else {
+      aosp_sdk_platform_version = aosp_sdk_version
+    }
+
+    # Speed up dexing using dx --incremental.
+    enable_incremental_dx = is_java_debug
+  }
+
+  # Neither of these should ever be used for release builds since they are
+  # somewhat experimental and dx --incremental is known to not produce
+  # byte-for-byte identical output.
+  assert(!(enable_incremental_dx && !is_java_debug))
+  assert(!(enable_incremental_javac && !is_java_debug))
+
+  # Path to where selected build variables are written to.
+  aosp_build_vars = "$root_build_dir/build_vars.txt"
+
+  # Host stuff -----------------------------------------------------------------
+
+  # Defines the name the AOSP build gives to the current host CPU
+  # architecture, which is different than the names GN uses.
+  if (host_cpu == "x64" || host_cpu == "arm64") {
+    aosp_host_arch = "x86_64"
+  } else if (host_cpu == "x86") {
+    aosp_host_arch = "x86"
+  } else {
+    assert(false, "Need AOSP toolchain support for your build CPU arch.")
+  }
+
+  # Defines the name the aosp build gives to the current host CPU
+  # architecture, which is different than the names GN uses.
+  if (host_os == "linux") {
+    aosp_host_os = "linux"
+  } else if (host_os == "mac") {
+    aosp_host_os = "darwin"
+  } else {
+    assert(false, "Need AOSP toolchain support for your build OS.")
+  }
+
+  # Directories and files ------------------------------------------------------
+  #
+  # We define may of the dirs strings here for each output architecture (rather
+  # than just the current one) since these are needed by the AOSP toolchain
+  # file to define toolchains for all possible targets in one pass.
+
+  aosp_sdk = "${ANDROID_HOME}/platforms/android-${aosp_sdk_platform_version}"
+  aosp_sdk_tools = "${ANDROID_HOME}/tools"
+  aosp_sdk_build_tools =
+      "${ANDROID_HOME}/build-tools/$aosp_sdk_build_tools_version"
+
+  # Subdirectories inside aosp_ndk_root that contain the sysroot for the
+  # associated platform.
+  x86_aosp_sysroot_subdir = "platforms/android-${aosp32_ndk_api_level}/arch-x86"
+  arm_aosp_sysroot_subdir = "platforms/android-${aosp32_ndk_api_level}/arch-arm"
+  mips_aosp_sysroot_subdir =
+      "platforms/android-${aosp32_ndk_api_level}/arch-mips"
+  x86_64_aosp_sysroot_subdir =
+      "platforms/android-${aosp64_ndk_api_level}/arch-x86_64"
+  arm64_aosp_sysroot_subdir =
+      "platforms/android-${aosp64_ndk_api_level}/arch-arm64"
+  mips64_aosp_sysroot_subdir =
+      "platforms/android-${aosp64_ndk_api_level}/arch-mips64"
+
+  # Toolchain root directory for each build. The actual binaries are inside
+  # a "bin" directory inside of these.
+  _aosp_toolchain_version = "4.9"
+  _aosp_toolchain_detailed_version = "4.9.x"
+  x86_aosp_toolchain_root = "$aosp_ndk_root/toolchains/x86-${_aosp_toolchain_version}/prebuilt/${aosp_host_os}-${aosp_host_arch}"
+  arm_aosp_toolchain_root = "$aosp_ndk_root/toolchains/arm-linux-androideabi-${_aosp_toolchain_version}/prebuilt/${aosp_host_os}-${aosp_host_arch}"
+  mips_aosp_toolchain_root = "$aosp_ndk_root/toolchains/mipsel-linux-android-${_aosp_toolchain_version}/prebuilt/${aosp_host_os}-${aosp_host_arch}"
+  x86_64_aosp_toolchain_root = "$aosp_ndk_root/toolchains/x86_64-${_aosp_toolchain_version}/prebuilt/${aosp_host_os}-${aosp_host_arch}"
+  mips64_aosp_toolchain_root = "$aosp_ndk_root/toolchains/mips64el-linux-android-${_aosp_toolchain_version}/prebuilt/${aosp_host_os}-${aosp_host_arch}"
+  arm64_aosp_toolchain_root = "$aosp_ndk_root/toolchains/aarch64-linux-android-${_aosp_toolchain_version}/prebuilt/${aosp_host_os}-${aosp_host_arch}"
+
+  # Location of libgcc. This is only needed for the current GN toolchain, so we
+  # only need to define the current one, rather than one for every platform
+  # like the toolchain roots.
+  if (current_cpu == "x86") {
+    aosp_prebuilt_arch = "android-x86"
+    _binary_prefix = "i686-linux-android"
+    aosp_toolchain_root = "$x86_aosp_toolchain_root"
+    aosp_libgcc_file = "$aosp_toolchain_root/lib/gcc/i686-linux-android/${_aosp_toolchain_detailed_version}/libgcc.a"
+  } else if (current_cpu == "arm") {
+    aosp_prebuilt_arch = "android-arm"
+    _binary_prefix = "arm-linux-androideabi"
+    aosp_toolchain_root = "$arm_aosp_toolchain_root"
+    aosp_libgcc_file = "$aosp_toolchain_root/lib/gcc/arm-linux-androideabi/${_aosp_toolchain_detailed_version}/libgcc.a"
+  } else if (current_cpu == "mipsel") {
+    aosp_prebuilt_arch = "android-mips"
+    _binary_prefix = "mipsel-linux-android"
+    aosp_toolchain_root = "$mips_aosp_toolchain_root"
+    aosp_libgcc_file = "$aosp_toolchain_root/lib/gcc/mipsel-linux-android/${_aosp_toolchain_detailed_version}/libgcc.a"
+  } else if (current_cpu == "x86_64") {
+    aosp_prebuilt_arch = "android-x86_64"
+    _binary_prefix = "x86_64-linux-android"
+    aosp_toolchain_root = "$x86_64_aosp_toolchain_root"
+    aosp_libgcc_file = "$aosp_toolchain_root/lib/gcc/x86_64-linux-android/${_aosp_toolchain_detailed_version}/libgcc.a"
+  } else if (current_cpu == "arm64") {
+    aosp_prebuilt_arch = "android-arm64"
+    _binary_prefix = "aarch64-linux-android"
+    aosp_toolchain_root = "$arm64_aosp_toolchain_root"
+    aosp_libgcc_file = "$aosp_toolchain_root/lib/gcc/aarch64-linux-android/${_aosp_toolchain_detailed_version}/libgcc.a"
+  } else if (current_cpu == "mips64el") {
+    aosp_prebuilt_arch = "android-mips64"
+    _binary_prefix = "mips64el-linux-android"
+    aosp_toolchain_root = "$mips64_aosp_toolchain_root"
+    aosp_libgcc_file = "$aosp_toolchain_root/lib/gcc/mips64el-linux-android/${_aosp_toolchain_detailed_version}/libgcc.a"
+  } else {
+    assert(false, "Need aosp libgcc support for your target arch.")
+  }
+  print("aosp_toolchain_root ${aosp_toolchain_root}")
+  print("aosp_libgcc_file ${aosp_libgcc_file}")
+  print("aosp_ndk_root ${aosp_ndk_root}")
+  print("jdk_path ${JAVA_HOME}")
+
+  aosp_tool_prefix = "$aosp_toolchain_root/bin/$_binary_prefix-"
+  aosp_readelf = "${aosp_tool_prefix}readelf"
+  aosp_objcopy = "${aosp_tool_prefix}objcopy"
+  aosp_gdbserver =
+      "$aosp_ndk_root/prebuilt/$aosp_prebuilt_arch/gdbserver/gdbserver"
+
+  # Toolchain stuff ------------------------------------------------------------
+
+  aosp_libcpp_root = "$aosp_ndk_root/sources/cxx-stl/llvm-libc++"
+
+  if (aosp_libcpp_lib_dir == "") {
+    aosp_libcpp_lib_dir = "${aosp_libcpp_root}/libs/${aosp_app_abi}"
+  }
+}

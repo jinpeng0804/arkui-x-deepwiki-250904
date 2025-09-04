@@ -1,0 +1,2313 @@
+{
+    "arch_dict": {
+        "linux": [
+            "arm-debug",
+            "arm-profile",
+            "arm-release",
+            "arm64-debug",
+            "arm64-profile",
+            "arm64-release",
+            "x86_64"
+        ],
+        "windows": [
+            "arm-debug",
+            "arm-profile",
+            "arm-release",
+            "arm64-debug",
+            "arm64-profile",
+            "arm64-release",
+            "x86_64"
+        ],
+        "darwin": [
+            "arm-debug",
+            "arm-profile",
+            "arm-release",
+            "arm64-debug",
+            "arm64-profile",
+            "arm64-simulator",
+            "x86_64-simulator",
+            "arm64-release",
+            "x86_64"
+        ]
+    },
+    "toolchains": {
+        "linux": {
+            "android-arm": "//build_plugins/toolchain/aosp:aosp_clang_arm_debug",
+            "android-arm-profile": "//build_plugins/toolchain/aosp:aosp_clang_arm_profile",
+            "android-arm-release": "//build_plugins/toolchain/aosp:aosp_clang_arm_release",
+            "android-arm64": "//build_plugins/toolchain/aosp:aosp_clang_arm64_debug",
+            "android-arm64-profile": "//build_plugins/toolchain/aosp:aosp_clang_arm64_profile",
+            "android-arm64-release": "//build_plugins/toolchain/aosp:aosp_clang_arm64_release",
+            "android-x86_64": "//build_plugins/toolchain/aosp:aosp_clang_x86_64"
+        },
+        "windows": {
+            "android-arm": "//build_plugins/toolchain/aosp:aosp_clang_arm_debug",
+            "android-arm-profile": "//build_plugins/toolchain/aosp:aosp_clang_arm_profile",
+            "android-arm-release": "//build_plugins/toolchain/aosp:aosp_clang_arm_release",
+            "android-arm64": "//build_plugins/toolchain/aosp:aosp_clang_arm64_debug",
+            "android-arm64-profile": "//build_plugins/toolchain/aosp:aosp_clang_arm64_profile",
+            "android-arm64-release": "//build_plugins/toolchain/aosp:aosp_clang_arm64_release",
+            "android-x86_64": "//build_plugins/toolchain/aosp:aosp_clang_x86_64"
+        },
+        "darwin": {
+            "android-arm": "//build_plugins/toolchain/aosp:aosp_clang_arm_debug",
+            "android-arm-profile": "//build_plugins/toolchain/aosp:aosp_clang_arm_profile",
+            "android-arm-release": "//build_plugins/toolchain/aosp:aosp_clang_arm_release",
+            "android-arm64": "//build_plugins/toolchain/aosp:aosp_clang_arm64_debug",
+            "android-arm64-profile": "//build_plugins/toolchain/aosp:aosp_clang_arm64_profile",
+            "android-arm64-release": "//build_plugins/toolchain/aosp:aosp_clang_arm64_release",
+            "ios-arm64": "//build_plugins/toolchain/ios:ios_clang_arm64_debug",
+            "ios-arm64-profile": "//build_plugins/toolchain/ios:ios_clang_arm64_profile",
+            "ios-arm64-release": "//build_plugins/toolchain/ios:ios_clang_arm64_release",
+            "ios-x86_64-simulator": "//build_plugins/toolchain/ios:ios_clang_x64_sim",
+            "ios-arm64-simulator": "//build_plugins/toolchain/ios:ios_clang_arm64_sim",
+            "android-x86_64": "//build_plugins/toolchain/aosp:aosp_clang_x86_64"
+        }
+    },
+    "android": [
+        {
+            "install_dir": "arkui-x",
+            "module_label": "//interface/sdk:sdkconfig",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine",
+            "module_label": "//interface/sdk:engine_apiconfig",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine",
+            "module_label": "//interface/sdk:ets",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine",
+            "module_label": "//interface/sdk:systemres",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres",
+            "module_label": "//interface/sdk:icudata",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+	    {
+            "install_dir": "arkui-x/engine/lib/arkui/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:libarkui_android",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/arkui",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:ace_android_adapter_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x",
+            "module_label": "//interface/sdk:license",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/include",
+            "module_label": "//interface/sdk:node_header",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/include",
+            "module_label": "//interface/sdk:libuv_header",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/include/uv",
+            "module_label": "//interface/sdk:libuv_uv_header",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/include/napi",
+            "module_label": "//interface/sdk:napi_header",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/include",
+            "module_label": "//interface/sdk:plugin_utils_header",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/include/ace/xcomponent",
+            "module_label": "//interface/sdk:ace_xcomponent_header",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/include/native_window",
+            "module_label": "//interface/sdk:native_window",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api",
+            "module_label": "//interface/sdk:api_apiconfig",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/component",
+            "module_label": "//interface/sdk:component_apiconfig",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/animator/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:animator",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkui/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_componentsnapshot",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkui/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_componentutils",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkui/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_performancemonitor",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkui/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_inspector",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkui/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_observer",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkui/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:overlay",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/configuration/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:configuration",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/font/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:font",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/measure/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:measure",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/multimedia",
+            "module_label": "//plugins/multimedia/media/android/java:media_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/multimedia/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:multimedia_media",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/mediaquery/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:mediaquery",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/promptaction/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:promptaction",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/router/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:router",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/ability_access_ctrl/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:abilityaccessctrl",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/ability_access_ctrl",
+            "module_label": "//plugins/ability_access_ctrl/android/java:ability_access_ctrl_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/bridge/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:bridge",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+	    {
+            "install_dir": "arkui-x/plugins/api/lib/buffer/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:buffer",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/convertxml/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:convertxml",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/data/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:data_relationalstore",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/data/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:data_datasharepredicates",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/data/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:data_preferences",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/data/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:data_unifieddatachannel",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/data/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:data_uniformtypedescriptor",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+	    {
+            "install_dir": "arkui-x/plugins/api/lib/device_info",
+            "module_label": "//plugins/device_info/android/java:device_info_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+	    {
+            "install_dir": "arkui-x/plugins/api/lib/device_info/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:deviceinfo",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/display/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:display",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/hilog/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:hilog",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/effectkit/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:effectkit",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:x_node",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:statemanagement",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:shape",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:mock",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+           "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:ark_modifier",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:ark_theme_control",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/advanced/dialog/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_advanced_dialog",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/advanced/segmentbutton/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_advanced_segmentbutton",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/advanced/subheader/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_advanced_subheader",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/advanced/toolbar/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_advanced_toolbar",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/multimodalinput_keycode/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:multimodalinput_keycode",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/hitrace_meter/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:hitracemeter",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/i18n/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:i18n",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/i18n",
+            "module_label": "//plugins/i18n/android/java:i18n_plugin_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/intl/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:intl",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/intl",
+            "module_label": "//plugins/intl/android/java:intl_plugin_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/include/rawfile",
+            "module_label": "//interface/sdk:plugin_rawfile_header",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/net",
+            "module_label": "//plugins/net/http/android/java:http_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/net",
+            "module_label": "//plugins/net/connection/android/java:netconnclient_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/net/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:net_http",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/net/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:net_connection",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/net/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:net_socket",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/net/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:net_websocket",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/utils/arch_type",
+            "module_label": "//plugins/net/utils:net_utils_android",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+	    {
+            "install_dir": "arkui-x/plugins/api/lib/process/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:process",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util",
+            "module_label": "//plugins/util/plugin/android/java:util_plugin_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_arraylist",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_deque",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_hashmap",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_hashset",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_lightweightmap",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_lightweightset",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_linkedlist",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_list",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_plainarray",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_queue",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_stack",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_treeset",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_stream",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_treemap",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/util/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:util_json",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/worker/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:worker",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/taskpool/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:taskpool",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/request/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:request",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/request",
+            "module_label": "//plugins/request/core/task/frameworks/android:task_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/uri/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:uri",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/url/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:url",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+	    {
+            "install_dir": "arkui-x/plugins/api/lib/xml/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:xml",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/third_party/arch_type",
+            "module_label": "//third_party/libxml2:libxml2",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/toolchains",
+            "module_label": "//interface/sdk:bin",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+	    {
+            "install_dir": "arkui-x/toolchains/ace_tools",
+            "module_label": "//interface/sdk:ace_tools",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/third_party/arch_type",
+            "module_label": "//third_party/zlib:shared_libz",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/third_party/arch_type",
+            "module_label": "//third_party/openssl:libssl_shared",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/file/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:file_fs",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/file/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:file_streamrw",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/file/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:file_hash",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/file/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:file_streamhash",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/file/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:file_statvfs",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/file/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:file_photoaccesshelper",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/file",
+            "module_label": "//plugins/file/photo_access_helper/android:photo_access_helper_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/third_party/arch_type",
+            "module_label": "//third_party/openssl:libcrypto_shared",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/third_party/arch_type",
+            "module_label": "//third_party/nghttp2/lib:libnghttp2_shared",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/uitest/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:uitest",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/web/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:web_webview",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/wifi_manager/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:wifimanager",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/wifi_manager",
+            "module_label": "//plugins/wifi_manager/android/java:wifi_manager_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/notification_manager/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:notificationmanager",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/notification_manager",
+            "module_label": "//plugins/notification_manager/android/java:notification_manager_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/common_event_manager/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:commoneventmanager",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/common_event_manager",
+            "module_label": "//plugins/common_event_manager/android/java:common_event_manager_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/web",
+            "module_label": "//plugins/web/webview/android/java:web_webview_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/zlib/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:zlib",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/third_party/arch_type",
+            "module_label": "//third_party/curl:curl_shared",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/security/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:security_cryptoframework",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/security/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:security_cert",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/events/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:events_emitter",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/multimedia",
+            "module_label": "//plugins/multimedia/audio/android/audiorenderer/java:audio_renderer_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/multimedia",
+            "module_label": "//plugins/multimedia/audio/android/audiocapturer/java:audio_capturer_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/multimedia",
+            "module_label": "//plugins/multimedia/audio/android/audiomanager/java:audio_manager_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/multimedia/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:multimedia_audio",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/file/picker/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:file_picker",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/file/picker/",
+            "module_label": "//plugins/file/picker/filepicker/android/java:filepicker_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkui/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_drawabledescriptor",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/platformview/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:platformview",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/lib/utils/arch_type",
+            "module_label": "//plugins/bluetooth/common:bt_common_android",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/bluetooth/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:bluetooth_a2dp",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/bluetooth/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:bluetooth_access",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/bluetooth/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:bluetooth_baseprofile",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/bluetooth/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:bluetooth_ble",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/bluetooth/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:bluetooth_connection",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/bluetooth",
+            "module_label": "//plugins/bluetooth/impl/android:bluetooth_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/system_date_time",
+            "module_label": "//plugins/system_date_time:time_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/system_date_time/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:systemdatetime",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/accessibility",
+            "module_label": "//plugins/accessibility/android/java:accessibility_java",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/accessibility/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:accessibility",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkui/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_dragcontroller",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkts/collections/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkts_collections",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkts/utils/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkts_utils",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/arkts/math/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkts_math_decimal",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/hiviewdfx/hiappevent/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:hiviewdfx_hiappevent",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/advanced/swiperefresher/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_advanced_swiperefresher",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:prefetcher",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/fonts",
+            "module_label": "//interface/sdk:systemres_fonts",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/advanced/composelistitem/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_advanced_composelistitem",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/advanced/composetitlebar/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_advanced_composetitlebar",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/advanced/selecttitlebar/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_advanced_selecttitlebar",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/lib/advanced/selectionmenu/arch_type",
+            "module_label": "//foundation/arkui/ace_engine/adapter/android/build:arkui_advanced_selectionmenu",
+            "target_os": [
+                "linux",
+                "windows",
+                "darwin"
+            ]
+        }
+    ],
+    "ios": [
+        {
+            "install_dir": "arkui-x/engine/framework/arkui/arch_type/libarkui_ios.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_ios",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x",
+            "module_label": "//interface/sdk:license",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/arkui/arch_type/libarkui_ios.framework/Headers/include",
+            "module_label": "//interface/sdk:node_header",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/arkui/arch_type/libarkui_ios.framework/Headers/include",
+            "module_label": "//interface/sdk:libuv_header",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/arkui/arch_type/libarkui_ios.framework/Headers/include/uv",
+            "module_label": "//interface/sdk:libuv_uv_header",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/arkui/arch_type/libarkui_ios.framework/Headers/include/napi",
+            "module_label": "//interface/sdk:napi_header",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/arkui/arch_type/libarkui_ios.framework/Headers/include",
+            "module_label": "//interface/sdk:plugin_utils_header",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/arkui/arch_type/libarkui_ios.framework/Headers/include/ace/xcomponent",
+            "module_label": "//interface/sdk:ace_xcomponent_header",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/arkui/arch_type/libarkui_ios.framework/Headers/include/native_window",
+            "module_label": "//interface/sdk:native_window",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libanimator.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libanimator",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_componentsnapshot.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_componentsnapshot",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_componentutils.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_componentutils",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_performancemonitor.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_performancemonitor",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_inspector.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_inspector",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_observer.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_observer",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libconfiguration.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libconfiguration",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libfont.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libfont",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libmeasure.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libmeasure",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libmediaquery.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libmediaquery",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libpromptaction.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libpromptaction",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/librouter.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:librouter",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libabilityaccessctrl.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libabilityaccessctrl",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libworker.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libworker",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libdata_relationalstore.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libdata_relationalstore",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libdata_datasharepredicates.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libdata_datasharepredicates",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libdata_preferences.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libdata_preferences",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libdata_unifieddatachannel.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libdata_unifieddatachannel",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libdata_uniformtypedescriptor.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libdata_uniformtypedescriptor",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/librequest.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:librequest",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libnet_connection.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libnet_connection",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libnet_socket.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libnet_socket",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libnet_websocket.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libnet_websocket",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libi18n.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libi18n",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libintl.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libintl",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/liburi.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:liburi",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libfile_fs.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libfile_fs",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libfile_streamrw.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libfile_streamrw",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libfile_hash.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libfile_hash",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libfile_streamhash.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libfile_streamhash",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libfile_statvfs.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libfile_statvfs",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libfile_picker.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libfile_picker",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libfile_photoaccesshelper.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libfile_photoaccesshelper",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/liburl.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:liburl",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libbuffer.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libbuffer",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libconvertxml.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libconvertxml",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libprocess.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libprocess",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_arraylist.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_arraylist",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_deque.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_deque",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_hashmap.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_hashmap",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_hashset.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_hashset",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_linkedlist.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_linkedlist",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_list.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_list",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_plainarray.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_plainarray",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_queue.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_queue",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_stack.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_stack",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_treemap.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_treemap",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_json.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_json",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_treeset.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_treeset",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_stream.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_stream",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_lightweightmap.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_lightweightmap",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libutil_lightweightset.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libutil_lightweightset",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libxml.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libxml",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libdisplay.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libdisplay",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libhilog.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libhilog",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libbridge.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libbridge",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libnet_http.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libnet_http",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libtaskpool.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libtaskpool",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libdeviceinfo.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libdeviceinfo",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/arkui/arch_type/libarkui_ios.framework/Headers/include/rawfile",
+            "module_label": "//interface/sdk:plugin_rawfile_header",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libuitest.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libuitest",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libweb_webview.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libweb_webview",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libeffectkit.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libeffectkit",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:x_node",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:statemanagement",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:shape",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:ark_theme_control",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libhitracemeter.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libhitracemeter",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libcommoneventmanager.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libcommoneventmanager",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/utils/arch_type/libnet_utils.framework",
+            "module_label": "//plugins/net/utils:libnet_utils",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/third_party/arch_type/libxml2_shared.framework",
+            "module_label": "//third_party/libxml2:libxml2_shared",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/third_party/arch_type/libnghttp2.framework",
+            "module_label": "//third_party/nghttp2/lib:libnghttp2",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/third_party/arch_type/libcrypto_openssl.framework",
+            "module_label": "//third_party/openssl:libcrypto_openssl",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/third_party/arch_type/libshared_libz.framework",
+            "module_label": "//third_party/zlib:libshared_libz",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libzlib.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libzlib",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libwifimanager.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libwifimanager",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libnotificationmanager.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libnotificationmanager",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libsecurity_cryptoframework.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libsecurity_cryptoframework",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libsecurity_cert.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libsecurity_cert",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libevents_emitter.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libevents_emitter",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libmultimedia_media.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libmultimedia_media",
+            "target_os": [
+                "darwin"
+            ]
+        },
+	{
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libmultimedia_audio.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libmultimedia_audio",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_drawabledescriptor.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_drawabledescriptor",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libplatformview.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libplatformview",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/framework/utils/arch_type/libbluetooth_common.framework",
+            "module_label": "//plugins/bluetooth/common:libbluetooth_common",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libbluetooth_a2dp.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libbluetooth_a2dp",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libbluetooth_access.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libbluetooth_access",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libbluetooth_ble.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libbluetooth_ble",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libbluetooth_connection.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libbluetooth_connection",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:mock",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:ark_modifier",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_advanced_dialog.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_advanced_dialog",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_advanced_toolbar.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_advanced_toolbar",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_advanced_subheader.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_advanced_subheader",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_advanced_segmentbutton.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_advanced_segmentbutton",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libmultimodalinput_keycode.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libmultimodalinput_keycode",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libsystemdatetime.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libsystemdatetime",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_dragcontroller.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_dragcontroller",
+            "target_os": [
+                "darwin"
+             ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkts_collections.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkts_collections",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkts_utils.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkts_utils",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkts_math_decimal.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkts_math_decimal",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libhiviewdfx_hiappevent.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libhiviewdfx_hiappevent",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_advanced_swiperefresher.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_advanced_swiperefresher",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/abc",
+            "module_label": "//foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend:prefetcher",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libaccessibility.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libaccessibility",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir":"arkui-x/plugins/api/framework/arch_type/liboverlay.framework",
+            "module_label":"//foundation/arkui/ace_engine/adapter/ios/build:liboverlay",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/engine/systemres/fonts",
+            "module_label": "//interface/sdk:systemres_fonts",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_advanced_composelistitem.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_advanced_composelistitem",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_advanced_composetitlebar.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_advanced_composetitlebar",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_advanced_selecttitlebar.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_advanced_selecttitlebar",
+            "target_os": [
+                "darwin"
+            ]
+        },
+        {
+            "install_dir": "arkui-x/plugins/api/framework/arch_type/libarkui_advanced_selectionmenu.framework",
+            "module_label": "//foundation/arkui/ace_engine/adapter/ios/build:libarkui_advanced_selectionmenu",
+            "target_os": [
+                "darwin"
+            ]
+        }
+    ]
+}

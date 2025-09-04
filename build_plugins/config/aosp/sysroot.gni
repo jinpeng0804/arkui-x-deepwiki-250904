@@ -1,0 +1,64 @@
+# Copyright 2013 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This header file defines the "sysroot" variable which is the absolute path
+# of the sysroot. If no sysroot applies, the variable will be an empty string.
+
+use_sysroot = current_cpu == "arm" || current_cpu == "arm64"
+
+if (is_linux && use_sysroot) {
+  # By default build against a sysroot image downloaded from Cloud Storage during gclient runhooks.
+  if (current_cpu == "x64") {
+    sysroot = "$target_sysroot_dir/debian_sid_amd64-sysroot"
+  } else if (current_cpu == "x86") {
+    sysroot = "$target_sysroot_dir/debian_sid_i386-sysroot"
+  } else if (current_cpu == "mipsel") {
+    sysroot = "$target_sysroot_dir/debian_sid_mips-sysroot"
+  } else if (current_cpu == "mips64el") {
+    sysroot = "$target_sysroot_dir/debian_sid_mips64el-sysroot"
+  } else if (current_cpu == "arm") {
+    sysroot = "$target_sysroot_dir/debian_sid_arm-sysroot"
+  } else if (current_cpu == "arm64") {
+    sysroot = "$target_sysroot_dir/debian_sid_arm64-sysroot"
+  } else {
+    assert(false, "No linux sysroot for cpu: $target_cpu")
+  }
+
+  if (sysroot != "") {
+    _script_arch = current_cpu
+    if (_script_arch == "x86") {
+      _script_arch = "i386"
+    } else if (_script_arch == "x64") {
+      _script_arch = "amd64"
+    }
+    assert(
+        exec_script("//build/scripts/dir_exists.py",
+                    [ rebase_path(sysroot) ],
+                    "string") == "True",
+        "Missing sysroot ($sysroot). To fix, run: build/linux/sysroot_scripts/install-sysroot.py --arch=$_script_arch")
+  }
+}
+
+if (is_android) {
+  # Aosp uses unified headers in NDK r16 and later, meaning that the
+  # compile time sysroot and link time sysroot are different
+  import("//build_plugins/config/aosp/config.gni")
+  sysroot = "$aosp_ndk_root/sysroot"
+  link_sysroot = sysroot
+  if (current_cpu == "arm") {
+    link_sysroot = "$aosp_ndk_root/$arm_aosp_sysroot_subdir"
+  } else if (current_cpu == "arm64") {
+    link_sysroot = "$aosp_ndk_root/$arm64_aosp_sysroot_subdir"
+  } else if (current_cpu == "x86") {
+    link_sysroot = "$aosp_ndk_root/$x86_aosp_sysroot_subdir"
+  } else if (current_cpu == "x86_64") {
+    link_sysroot = "$aosp_ndk_root/$x86_64_aosp_sysroot_subdir"
+  } else if (current_cpu == "mipsel") {
+    link_sysroot = "$aosp_ndk_root/$mips_aosp_sysroot_subdir"
+  } else if (current_cpu == "mips64el") {
+    link_sysroot = "$aosp_ndk_root/$mips64_aosp_sysroot_subdir"
+  } else {
+    assert(false, "No aosp link sysroot for cpu: $target_cpu")
+  }
+}

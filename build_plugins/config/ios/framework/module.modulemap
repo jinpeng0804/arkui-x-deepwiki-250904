@@ -1,0 +1,6 @@
+framework module libarkui_ios {
+  umbrella header "Ace.h"
+
+  export *
+  module * { export * }
+}

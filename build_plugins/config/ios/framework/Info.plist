@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>{framework_name}</string>
+	<key>CFBundleExecutable</key>
+	<string>{framework_name}</string>
+	<key>CFBundleIdentifier</key>
+	<string>ohos.ace.{identifier_name}</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>{framework_name}</string>
+	<key>CFBundlePackageType</key>
+	<string>FMWK</string>
+	<key>CFBundleShortVersionString</key>
+	<string>{short_version}</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>{bundle_version}</string>
+	<key>ClangVersion</key>
+	<string>{clang_version}</string>
+	<key>MiniXEngineVerson</key>
+	<string>{revision}</string>
+	<key>MinimumOSVersion</key>
+	<string>{min_version}</string>
+	<key>ACEEngine</key>
+	<string>{ace_engine}</string>
+</dict>
+</plist>

@@ -1,0 +1,587 @@
+# Copyright 2014 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/c++/c++.gni")
+import("//build/config/clang/clang.gni")
+import("//build/config/compiler/compiler.gni")
+import("//build/config/python.gni")
+import("//build/config/zip.gni")
+import("//build/ohos/ace/ace.gni")
+import("//build/ohos_var.gni")
+import("//build/toolchain/toolchain.gni")
+
+# Do not add any imports to non-//build directories here.
+# Some projects (e.g. V8) do not have non-build directories DEPS'ed in.
+import("//build_plugins/config/aosp/config.gni")
+import("//build_plugins/templates/java/internal_rules.gni")
+if (enable_java_templates) {
+  import("//build/config/sanitizers/sanitizers.gni")
+
+  # Declare a java library target
+  #
+  # Variables
+  #   deps: Specifies the dependencies of this target. Java targets in this list
+  #     will be added to the javac classpath.
+  #   annotation_processor_deps: List of java_annotation_processor targets to
+  #     use when compiling.
+  #
+  #   jar_path: Path to a prebuilt jar. Mutually exclusive with java_files &
+  #     srcjar_deps.
+  #   java_files: List of .java files included in this library.
+  #   srcjar_deps: List of srcjar dependencies. The .java files in the srcjars
+  #     will be added to java_files and be included in this library.
+  #
+  #   input_jars_paths: A list of paths to the jars that should be included
+  #     in the compile-time classpath. These are in addition to library .jars
+  #     that appear in deps.
+  #   classpath_deps: Deps that should added to the classpath for this target,
+  #     but not linked into the app (use this for annotation processors).
+  #
+  #   chromium_code: If true, extra analysis warning/errors will be enabled.
+  #   enable_error-prone: If true, enables the errorprone compiler.
+  #   enable_incremental_javac_override: Overrides the global
+  #     enable_incremental_javac.
+  #
+  #   jar_excluded_patterns: List of patterns of .class files to exclude.
+  #   jar_included_patterns: List of patterns of .class files to include.
+  #     When omitted, all classes not matched by jar_excluded_patterns are
+  #     included. When specified, all non-matching .class files are stripped.
+  #
+  #   output_name: File name for the output .jar (not including extension).
+  #     Defaults to the input .jar file name.
+  #
+  #   proguard_configs: List of proguard configs to use in final app step for
+  #     any app that depends on this library.
+  #
+  #   supports_aosp: If true, AOSP targets (java_library, aosp_app)
+  #     may depend on this target. Note: if true, this target must only use the
+  #     subset of Java available on AOSP.
+  #   bypass_platform_checks: Disables checks about cross-platform (Java/AOSP)
+  #     dependencies for this target. This will allow depending on an
+  #     java_library target, for example.
+  #
+  #   additional_jar_files: Use to package additional files (Java resources)
+  #     into the output jar. Pass a list of length-2 lists with format:
+  #         [ [ path_to_file, path_to_put_in_jar ] ]
+  #
+  #   javac_args: Additional arguments to pass to javac.
+  #
+  #   data_deps, testonly
+  #
+  # Example
+  #   java_library("foo_java") {
+  #     java_files = [
+  #       "org/chromium/foo/Foo.java",
+  #       "org/chromium/foo/FooInterface.java",
+  #       "org/chromium/foo/FooService.java",
+  #     ]
+  #     deps = [
+  #       ":bar_java"
+  #     ]
+  #     srcjar_deps = [
+  #       ":foo_generated_enum"
+  #     ]
+  #     jar_excluded_patterns = [
+  #       "*/FooService.class", "org/chromium/FooService\$*.class"
+  #     ]
+  #   }
+  template("java_library") {
+    java_library_impl(target_name) {
+      forward_variables_from(invoker, "*")
+      type = "java_library"
+      _is_host_library =
+          defined(invoker.is_host_library) && invoker.is_host_library
+      if (!_is_host_library) {
+        requires_aosp = true
+        supports_aosp = true
+      }
+      not_needed([ "_is_host_library" ])
+    }
+  }
+
+  # Template used for jar combining.
+  # 1st use case: combine all 4 kinds of jars in subsystem, in this case,
+  # combined jar will be installed as boot jar.
+  # Example:
+  # ohos_combine_jars("media_java") {
+  #   deps = [
+  #     ":adapter_java",
+  #     ":impl_java",
+  #     ":sdk_java",
+  #     ":kits_java",
+  #   ]
+  #   if (is_double_framework && !mrt) {
+  #     subsystem_name = "media"
+  #     dex_path = "${target_out_dir}/media.z.jar"
+  #   }
+  # }
+  #
+  # 2nd use case: combined sdk jars, in this case, only do combination.
+  # Example:
+  # ohos_combine_jars("hiviewdfx_java_sdk") {
+  #   deps = [
+  #     "interfaces/innerkits/HiLog:hilog_java",
+  #     "interfaces/innerkits/hitrace_java:hitrace_java",
+  #   ]
+  #   jar_path = "${target_out_dir}/hiviewdfx.jar"
+  # }
+  template("ohos_combine_jars") {
+    if (defined(invoker.subsystem_name) && defined(invoker.part_name)) {
+      _subsystem_name = invoker.subsystem_name
+      _part_name = invoker.part_name
+    } else if (defined(invoker.subsystem_name)) {
+      _subsystem_name = invoker.subsystem_name
+      _part_name = _subsystem_name
+    } else if (defined(invoker.part_name)) {
+      _part_name = invoker.part_name
+      _part_subsystem_info_file =
+          "$root_build_dir/build_configs/parts_info/part_subsystem.json"
+      _arguments = [
+        "--part-name",
+        part_name,
+        "--part-subsystem-info-file",
+        rebase_path(_part_subsystem_info_file, root_build_dir),
+      ]
+      get_subsystem_script = "//build/templates/common/get_subsystem_name.py"
+      _subsystem_name =
+          exec_script(get_subsystem_script, _arguments, "trim string")
+    } else {
+      _subsystem_name = "common"
+      _part_name = _subsystem_name
+    }
+    assert(_subsystem_name != "")
+    assert(_part_name != "")
+
+    _deps = []
+    if (defined(invoker.deps)) {
+      foreach(d, invoker.deps) {
+        _target_label = get_label_info(d, "label_no_toolchain")
+        sources = []
+        sources = filter_exclude(
+                [ _target_label ],
+                resources_target_allowlist + assets_target_allowlist +
+                    maple_java_target_allowlist)
+        if (sources != []) {
+          _deps += [ d ]
+        }
+      }
+      sources = []
+    }
+    _public_deps = []
+    if (defined(invoker.public_deps)) {
+      _public_deps += invoker.public_deps
+    }
+
+    _install_needed = defined(invoker.install) && invoker.install
+
+    if (defined(invoker.collect)) {
+      _collect_needed = invoker.collect
+    } else {
+      _collect_needed = !_install_needed
+    }
+
+    if (_collect_needed || _install_needed) {
+      _final_jar_path =
+          "$root_out_dir/lib.java.framework/" +
+          "${_subsystem_name}/${_part_name}/${target_name}.combined.jar"
+    } else {
+      _final_jar_path = "${target_gen_dir}/${target_name}.combined.jar"
+    }
+    if (defined(invoker.jar_path)) {
+      _final_jar_path = invoker.jar_path
+    }
+
+    _ijar_path = get_path_info(_final_jar_path, "dir") + "/" +
+                 get_path_info(_final_jar_path, "name") + ".interface." +
+                 get_path_info(_final_jar_path, "extension")
+
+    _build_config = "$target_gen_dir/$target_name.build_config"
+    _build_config_target_name = "${target_name}__build_config"
+    _main_target_name = target_name
+    write_build_config("${target_name}__build_config") {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      forward_variables_from(invoker,
+                             [
+                               "aosp_deps",
+                               "android_deps",
+                               "external_deps",
+                               "bypass_platform_checks",
+                             ])
+      type = "java_library"
+      possible_config_deps = _deps
+      build_config = _build_config
+      jar_path = _final_jar_path
+      unprocessed_jar_path = _final_jar_path
+      ijar_path = _ijar_path
+      supports_aosp = true
+      requires_aosp = true
+      java_sources_file = "$target_gen_dir/$_main_target_name.sources"
+      write_java_sources_file = true
+      combine_target = true
+      deps = _deps
+    }
+    _public_deps += [ ":$_build_config_target_name" ]
+
+    if (defined(invoker.testonly) && invoker.testonly) {
+      _collect_needed = false
+    }
+    if (_collect_needed) {
+      _main_target_name = target_name
+    }
+
+    _combined_jar_target_name = "${target_name}__combinedjar"
+    _output_combined_jar = rebase_path(_final_jar_path, root_build_dir)
+    action_with_pydeps(_combined_jar_target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      deps = _deps
+      public_deps = _public_deps
+      script = "//build_plugins/templates/java/combined_jars.py"
+      depfile = "$target_gen_dir/$target_name.d"
+      args = [
+        "--depfile",
+        rebase_path(depfile, root_build_dir),
+      ]
+
+      inputs = []
+      foreach(_dep, _deps) {
+        _dep_label_name = get_label_info(_dep, "name")
+        _dep_out_dir = get_label_info(_dep, "target_gen_dir")
+        _rebased_dep_build_config =
+            rebase_path("$_dep_out_dir/$_dep_label_name.build_config",
+                        root_build_dir)
+        inputs += [ "$_dep_out_dir/$_dep_label_name.build_config" ]
+        args += [
+          "--depjars=@FileArg($_rebased_dep_build_config:deps_info:dex_deps_jar_path)",
+          "--inputjars=@FileArg($_rebased_dep_build_config:deps_info:jar_path)",
+        ]
+      }
+
+      if (_collect_needed) {
+        install_module_info = {
+          module_def =
+              get_label_info(":$_main_target_name", "label_with_toolchain")
+          module_info_file =
+              rebase_path(get_label_info(module_def, "target_out_dir"),
+                          root_build_dir) +
+              "/${_main_target_name}_module_info.json"
+          subsystem_name = _subsystem_name
+          part_name = _part_name
+          toolchain = current_toolchain
+          toolchain_out_dir = rebase_path(root_out_dir, root_build_dir)
+        }
+
+        metadata = {
+          install_modules = [ install_module_info ]
+        }
+
+        if (defined(invoker.dex_path)) {
+          not_needed(invoker, [ "dex_path" ])
+        }
+      }
+
+      args += [
+        "--output_jar",
+        _output_combined_jar,
+      ]
+      outputs = [ _final_jar_path ]
+    }
+    _public_deps += [ ":$_combined_jar_target_name" ]
+
+    # combined interface jar
+    _icombined_jar_target_name = "${target_name}__icombinedjar"
+    _output_icombined_jar = rebase_path(_ijar_path, root_build_dir)
+    action_with_pydeps(_icombined_jar_target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      deps = _deps
+      public_deps = _public_deps
+      script = "//build_plugins/templates/java/combined_jars.py"
+      depfile = "$target_gen_dir/$target_name.d"
+      args = [
+        "--depfile",
+        rebase_path(depfile, root_build_dir),
+      ]
+      inputs = []
+      foreach(_dep, _deps) {
+        _dep_label_name = get_label_info(_dep, "name")
+        _dep_out_dir = get_label_info(_dep, "target_gen_dir")
+        _rebased_dep_build_config =
+            rebase_path("$_dep_out_dir/$_dep_label_name.build_config",
+                        root_build_dir)
+        inputs += [ "$_dep_out_dir/$_dep_label_name.build_config" ]
+        args += [
+          "--depjars=@FileArg($_rebased_dep_build_config:deps_info:dex_deps_interface_jar_path)",
+          "--inputjars=@FileArg($_rebased_dep_build_config:deps_info:interface_jar_path)",
+        ]
+      }
+      args += [
+        "--output_jar",
+        _output_icombined_jar,
+      ]
+      outputs = [ _ijar_path ]
+    }
+    _deps += [ ":$_icombined_jar_target_name" ]
+
+    if (_collect_needed) {
+      # In general, all ohos jar files will be collected to zframework.z.jar.
+      # So only check package names for targets that _collect_needed=true
+      _package_check_target = "${_main_target_name}__check_package"
+      check_package_name(_package_check_target) {
+        deps = [ ":$_combined_jar_target_name" ]
+        jar_path = _final_jar_path
+      }
+      _deps += [ ":$_package_check_target" ]
+    }
+
+    if (_install_needed) {
+      _dex_target_name = "${target_name}__dex"
+
+      if (defined(invoker.dex_path)) {
+        _dex_path = invoker.dex_path
+      } else {
+        _dex_path = get_path_info(_output_combined_jar, "out_dir") + "/" +
+                    get_path_info(_output_combined_jar, "name") + ".z.jar"
+      }
+
+      dex_with_res(_dex_target_name) {
+        forward_variables_from(invoker,
+                               [
+                                 "testonly",
+                                 "visibility",
+                               ])
+        subsystem_name = _subsystem_name
+        part_name = _part_name
+        input_jars = [ _final_jar_path ]
+        dex_path = _dex_path
+        deps = _deps
+        install_needed = _install_needed
+      }
+
+      _module_info_target = "${_dex_target_name}_info"
+      _boot_jar_name = get_path_info(_dex_path, "name")
+      _boot_jar_install_dir = "framework"
+      if (defined(invoker.module_install_dir)) {
+        _boot_jar_install_dir = invoker.module_install_dir
+      }
+      _boot_jar_extension = "." + get_path_info(_dex_path, "extension")
+
+      generate_module_info(_module_info_target) {
+        forward_variables_from(invoker,
+                               [
+                                 "testonly",
+                                 "visibility",
+                               ])
+        module_name = _dex_target_name
+        module_type = "dex"
+        module_install_images = [ "system" ]
+        if (defined(invoker.install_images)) {
+          module_install_images = []
+          module_install_images += invoker.install_images
+        }
+        module_install_dir = _boot_jar_install_dir
+        module_install_name = _boot_jar_name
+        module_source_dir = get_path_info(_dex_path, "dir")
+        module_output_extension = _boot_jar_extension
+      }
+
+      group(target_name) {
+        forward_variables_from(invoker,
+                               [
+                                 "testonly",
+                                 "visibility",
+                               ])
+        deps = [
+          ":$_combined_jar_target_name",
+          ":$_dex_target_name",
+          ":$_module_info_target",
+        ]
+        public_deps = _public_deps
+      }
+    } else {
+      generate_module_info("${_main_target_name}_info") {
+        forward_variables_from(invoker,
+                               [
+                                 "testonly",
+                                 "visibility",
+                               ])
+        module_name = _main_target_name
+        module_type = "java_library"
+
+        collect = false
+        install_enable = false
+        if (defined(_collect_needed)) {
+          collect = _collect_needed
+        }
+        if (defined(_install_needed)) {
+          install_enable = _install_needed
+        }
+
+        module_install_name = get_path_info(_final_jar_path, "name")
+        module_source_dir = get_path_info(_final_jar_path, "dir")
+        module_output_extension = ".jar"
+        module_alt_output_extension = ".interface.jar"
+      }
+      group(target_name) {
+        forward_variables_from(invoker,
+                               [
+                                 "testonly",
+                                 "visibility",
+                               ])
+
+        deps = [ ":${_main_target_name}_info" ]
+        deps += _deps
+        public_deps = _public_deps
+      }
+    }
+  }
+
+  # Declare a java library target for aosp sdk prebuilt jar
+  #
+  # Supports all variables of java_library().
+  #
+  # Example
+  #   aosp_system_java_prebuilt("aosp_sdk_java") {
+  #     jar_path = "${ANDROID_HOME}/platforms/android-${aosp_sdk_version}/android.jar"
+  #   }
+  template("aosp_system_java_prebuilt") {
+    java_library_impl(target_name) {
+      forward_variables_from(invoker, "*")
+      supports_aosp = true
+      type = "system_java_library"
+    }
+  }
+
+  # Define an java_interface target
+  #
+  # Variables
+  #    source_files: Must be set. Source files containing the interface.
+  #      NOTE: caller must make sure the directory is valid.
+  #    source_path: Optional. Source files containing the interface.
+  #      NOTE: caller must make sure the directory is valid.
+  #    metalava_path: The path of metalava.
+  #      NOTE: caller must make sure the path is valid.
+  #
+  # Example
+  #    ohos_java_interface("TestAA") {
+  #      source_files = [ "TestAA/src/java/ohos/hiworld/test.java" ]
+  #    }
+  template("ohos_java_interface") {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+
+    assert(defined(build_config_file),
+           "build_config file in ohos java interface is necessary")
+    assert(defined(module_name),
+           "module name in ohos java interface is necessary")
+
+    if (defined(metalava_path)) {
+      _final_metalava_path = metalava_path
+    } else {
+      _final_metalava_path = default_metalava_path
+    }
+
+    _final_doc_stubs = "${target_gen_dir}/${target_name}"
+
+    if (!defined(signature_file_dir)) {
+      signature_file_dir = "${target_gen_dir}/${target_name}"
+    }
+
+    action_with_pydeps(target_name) {
+      deps = []
+      if (defined(invoker.deps)) {
+        deps += invoker.deps
+      }
+      inputs = [
+        build_config_file,
+        _final_metalava_path,
+      ]
+      script = "//build_plugins/templates/java/generate_interface.py"
+      depfile = "$target_gen_dir/$target_name.d"
+      _rebased_build_config = rebase_path(build_config_file, root_build_dir)
+      args = [
+        "--jdk_path",
+        rebase_path(jdk_path, root_build_dir),
+        "--metalava_path",
+        rebase_path(_final_metalava_path, root_build_dir),
+        "--doc_stubs_dir",
+        rebase_path(_final_doc_stubs, root_build_dir),
+        "--signature_file_dir",
+        rebase_path(signature_file_dir, root_build_dir),
+        "--module_name",
+        module_name,
+        "--source_list_file=@FileArg($_rebased_build_config:deps_info:java_sources_file)",
+        "--depfile",
+        rebase_path(depfile, root_build_dir),
+      ]
+
+      _output = "$target_gen_dir/$target_name/generated/signature"
+      if (defined(gen_base_signature) && gen_base_signature) {
+        args += [
+          "--gen_base_signature",
+          "True",
+        ]
+        _output = signature_file_dir + "/signature"
+      }
+      args += [
+        "--output",
+        rebase_path(_output, root_build_dir),
+        "--record_path",
+        rebase_path("$target_gen_dir/$target_name/signature.md5.stamp",
+                    root_build_dir),
+      ]
+
+      outputs = [ _output ]
+
+      if (defined(sign_file_root_dir)) {
+        args += [
+          "--sign_file_root_dir",
+          rebase_path(sign_file_root_dir, root_build_dir),
+        ]
+      }
+
+      # classpath
+      args += [
+        "--javac-full-classpath",
+        "@FileArg($_rebased_build_config:deps_info:javac_full_interface_classpath)",
+      ]
+
+      if (defined(hide_system_api) && hide_system_api) {
+        _hm_annotation_target = "//mcl:ohos_annotation_java"
+        _hm_annotation_build_config =
+            get_label_info(_hm_annotation_target, "target_gen_dir") + "/" +
+            get_label_info(_hm_annotation_target, "name") + ".build_config"
+        inputs += [ _hm_annotation_build_config ]
+        _rebased_hm_annotation_build_config =
+            rebase_path(_hm_annotation_build_config, root_build_dir)
+        args += [
+          "--hide-annotation",
+          "ohos.annotation.SystemApi",
+          "--systemapi-classpath",
+          "@FileArg($_rebased_hm_annotation_build_config:deps_info:jar_path)",
+        ]
+        deps += [ _hm_annotation_target ]
+      }
+    }
+  }
+}

@@ -1,0 +1,62 @@
+# Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/appframework/ability/ability_runtime/ability_runtime.gni")
+
+ohos_source_set("bundle_bundlemanager_source_set") {
+  defines = []
+  include_dirs =
+      [ "${ability_runtime_cross_platform_path}/interfaces/inner_api/bundle" ]
+
+  configs = [
+    "${ability_runtime_cross_platform_path}/frameworks/js/napi/napi_common:napi_common_public_config",
+    "${ability_runtime_cross_platform_path}/interfaces/inner_api/bundle:bundle_parser_config",
+    "${ability_runtime_cross_platform_path}/interfaces/inner_api/hilog:ability_cross_platform_hilog_config",
+    "${ability_runtime_cross_platform_path}/interfaces/inner_api/jsruntime:jsruntime_config",
+  ]
+
+  sources = [
+    "bundle_manager_module.cpp",
+    "js_bundle_manager.cpp",
+  ]
+
+  if (use_static_napi_libs) {
+    deps = [ "//foundation/arkui/napi:ace_napi" ]
+  } else {
+    deps = [ "//plugins/libs/napi:napi_${target_os}" ]
+  }
+
+  if (target_os == "android") {
+    defines += [ "ANDROID_PLATFORM" ]
+    include_dirs += [
+      "//foundation/arkui/ace_engine/adapter/android/entrance/java/jni",
+      "//foundation/arkui/ace_engine/adapter/android/stage/ability/java/jni",
+    ]
+  } else if (target_os == "ios") {
+    defines = [ "IOS_PLATFORM" ]
+    include_dirs +=
+        [ "//foundation/arkui/ace_engine/adapter/ios/stage/ability" ]
+  }
+
+  subsystem_name = "bundlemanager"
+  part_name = "bundle_framework"
+}
+
+ohos_shared_library("bundle_bundlemanager") {
+  deps = [ ":bundle_bundlemanager_source_set" ]
+
+  relative_install_dir = "module/bundle"
+  subsystem_name = "bundlemanager"
+  part_name = "bundle_framework"
+}

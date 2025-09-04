@@ -1,0 +1,190 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/templates/metadata/module_info.gni")
+import("//build_plugins/config/ios/ios_sdk.gni")
+import("//build_plugins/version.gni")
+
+template("ohos_combine_darwin_framework") {
+  if (defined(invoker.subsystem_name) && defined(invoker.part_name)) {
+    _subsystem_name = invoker.subsystem_name
+    _part_name = invoker.part_name
+  } else if (defined(invoker.subsystem_name)) {
+    _subsystem_name = invoker.subsystem_name
+    _part_name = _subsystem_name
+  } else if (defined(invoker.part_name)) {
+    _part_name = invoker.part_name
+    _part_subsystem_info_file =
+        "$root_build_dir/build_configs/parts_info/part_subsystem.json"
+    _arguments = [
+      "--part-name",
+      part_name,
+      "--part-subsystem-info-file",
+      rebase_path(_part_subsystem_info_file, root_build_dir),
+    ]
+    get_subsystem_script = "//build/templates/common/get_subsystem_name.py"
+    _subsystem_name =
+        exec_script(get_subsystem_script, _arguments, "trim string")
+  } else {
+    _subsystem_name = "common"
+    _part_name = _subsystem_name
+  }
+  assert(_subsystem_name != "")
+  assert(_part_name != "")
+
+  _install_needed = defined(invoker.install) && invoker.install
+
+  if (defined(invoker.collect)) {
+    _collect_needed = invoker.collect
+  } else {
+    _collect_needed = !_install_needed
+  }
+
+  _base_frameworks_path = ""
+  if (_collect_needed || _install_needed) {
+    _base_frameworks_path =
+        "$root_out_dir/lib.ios.framework/" + "${_subsystem_name}/${_part_name}/"
+    _final_frameworks_path = _base_frameworks_path + "${target_name}.framework"
+  } else {
+    _base_frameworks_path = "${target_gen_dir}/"
+    _final_frameworks_path = _base_frameworks_path + "${target_name}.framework"
+  }
+  if (defined(invoker.jar_path)) {
+    _final_frameworks_path = invoker.jar_path
+  }
+
+  has_header = defined(invoker._export_framework_headers)
+  _target_name = target_name
+  identifier_name = string_replace(target_name, "_", "")
+  group("universal_ace_framework_${_target_name}") {
+    visibility = [ ":*" ]
+
+    deps = [
+      # ":copy_and_verify_framework_module",
+      ":copy_dylib_${_target_name}",
+
+      # ":copy_framework_icu",
+      ":${_target_name}_info",
+      ":copy_framework_info_plist_${_target_name}",
+      ":copy_framework_module_map_${_target_name}",
+      ":copy_framework_podspec_${_target_name}",
+    ]
+    if (has_header) {
+      deps += [ ":copy_framework_headers_${_target_name}" ]
+    }
+
+    # if (is_asan) {
+    # deps += [ ":copy_asan_runtime_dylib" ]
+    # }
+  }
+
+  if (has_header) {
+    action("copy_framework_headers_${_target_name}") {
+      script = "//build_plugins/config/ios/tools/install_framework_headers.py"
+      visibility = [ ":*" ]
+      sources = get_path_info(invoker._export_framework_headers, "abspath")
+      outputs = []
+      foreach(header, sources) {
+        header_basename = get_path_info(header, "file")
+        print(header_basename)
+        outputs += [ "$_final_frameworks_path/Headers/$header_basename" ]
+      }
+      args = [
+               "--location",
+               rebase_path("$_final_frameworks_path/Headers"),
+               "--headers",
+             ] + rebase_path(sources, "", "//")
+
+      deps = invoker.deps
+    }
+  }
+
+  copy("copy_dylib_${_target_name}") {
+    visibility = [ ":*" ]
+
+    sources =
+        [ "$root_out_dir/${_subsystem_name}/${_part_name}/$target_name.dylib" ]
+    outputs = [ "$_final_frameworks_path/$_target_name" ]
+
+    deps = invoker.deps
+  }
+
+  action("copy_framework_info_plist_${_target_name}") {
+    visibility = [ ":*" ]
+    script = "//build_plugins/config/ios/tools/copy_info_plist.py"
+    sources = [ "//build_plugins/config/ios/framework/Info.plist" ]
+    outputs = [ "$_final_frameworks_path/Info.plist" ]
+    args = [
+      "--source",
+      rebase_path(sources[0]),
+      "--destination",
+      rebase_path(outputs[0]),
+      "--minversion",
+      ios_deployment_target,
+      "--name",
+      _target_name,
+      "--identifier",
+      identifier_name,
+      "--sdkversion",
+      arkuix_sdk_version,
+      "--hostcpu",
+      host_cpu,
+    ]
+
+    if (defined(use_xcode_clang) && use_xcode_clang) {
+      args += [ "--bitcode" ]
+    }
+
+    deps = invoker.deps
+  }
+
+  copy("copy_framework_module_map_${_target_name}") {
+    visibility = [ ":*" ]
+    sources = [ "//build_plugins/config/ios/framework/module.modulemap" ]
+    outputs = [ "$_final_frameworks_path/Modules/module.modulemap" ]
+
+    deps = invoker.deps
+  }
+
+  copy("copy_framework_podspec_${_target_name}") {
+    visibility = [ ":*" ]
+    sources = [ "//build_plugins/config/ios/framework/libarkui_ios.podspec" ]
+    outputs = [ "$_final_frameworks_path/libarkui_ios.podspec" ]
+
+    deps = invoker.deps
+  }
+
+  action("${_target_name}") {
+    script = "//build_plugins/config/ios/tools/create_xcframework.py"
+    outputs = [ "$_base_frameworks_path/$_target_name.xcframework" ]
+    args = [
+      "--frameworks",
+      rebase_path("$_final_frameworks_path"),
+      "--name",
+      _target_name,
+      "--location",
+      rebase_path("$_base_frameworks_path"),
+    ]
+
+    deps = invoker.deps
+    deps += [ ":universal_ace_framework_${_target_name}" ]
+  }
+
+  generate_module_info("${_target_name}_info") {
+    module_type = "framework"
+    module_install_name = ""
+    module_name = _target_name
+    module_source_dir = _final_frameworks_path
+    install_enable = false
+  }
+}

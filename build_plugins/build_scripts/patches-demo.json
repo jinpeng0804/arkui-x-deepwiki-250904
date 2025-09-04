@@ -1,0 +1,16 @@
+[
+    {
+        "repo": "foundation/arkui/ace_engine/",
+        "patches": [
+            {
+                "type": "commit",
+                "commit": "62a0cd3f340f38d3f240aafa24ab69da4bed154a",
+                "commitMessage": "crossplatform web move to width,when pageOut"
+            },
+            {
+                "type": "diff",
+                "commit": "build_plugins/build_scripts/demo.diff"
+            }
+        ]
+    }
+]

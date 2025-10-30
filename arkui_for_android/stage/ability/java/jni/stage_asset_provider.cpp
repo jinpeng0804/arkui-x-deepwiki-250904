@@ -849,10 +849,26 @@ bool StageAssetProvider::IsDynamicLoadLibs()
     return isDynamicLibs_;
 }
 
+void StageAssetProvider::SetBundleName(const std::string& bundleName)
+{
+    bundleName_ = bundleName;
+}
+
+std::string StageAssetProvider::GetSplicingModuleName(const std::string& moduleName)
+{
+    if (moduleName.empty() || bundleName_.empty()) {
+        return moduleName;
+    }
+    std::string fullModuleName = bundleName_ + "." + moduleName;
+    std::string modulePath = GetAppDataModuleDir() + '/' + fullModuleName;
+    return ExistDir(modulePath) ? fullModuleName : moduleName;
+}
+
 void StageAssetProvider::InitModuleVersionCode()
 {
     auto moduleList = GetModuleJsonBufferList();
     std::string moduleName = "";
+    std::string bundleName = "";
     int32_t versionCode = 0;
     for (auto& buffer : moduleList) {
         buffer.push_back('\0');
@@ -865,6 +881,14 @@ void StageAssetProvider::InitModuleVersionCode()
         }
         if (moduleJson.contains("module") && moduleJson["module"].contains("name")) {
             moduleName = moduleJson["module"]["name"].get<std::string>();
+        }
+        if (moduleJson.contains("app") && moduleJson["app"].contains("bundleName")) {
+            bundleName = moduleJson["app"]["bundleName"].get<std::string>();
+        }
+        if (!moduleName.empty() && !bundleName.empty()) {
+            std::string fullModuleName = bundleName + "." + moduleName;
+            std::string modulePath = GetAppDataModuleDir() + '/' + fullModuleName;
+            moduleName = ExistDir(modulePath) ? fullModuleName : moduleName;
         }
         if (!moduleName.empty() && versionCode > 0) {
             versionCodes_.emplace(moduleName, versionCode);
@@ -918,6 +942,7 @@ std::vector<uint8_t> StageAssetProvider::GetFontConfigJsonBuffer(const std::stri
         buffer = GetBufferByAppDataPath(modulePath);
     }
     if (!buffer.empty()) {
+        buffer.push_back('\0');
         nlohmann::json moduleJson = nlohmann::json::parse(buffer.data(), nullptr, false);
         if (!moduleJson.is_discarded() && moduleJson.contains("app") && moduleJson["app"].contains("configuration")) {
             configJsonValue = moduleJson["app"]["configuration"].get<std::string>();
@@ -931,7 +956,9 @@ std::vector<uint8_t> StageAssetProvider::GetFontConfigJsonBuffer(const std::stri
     }
     std::string sourcePath = GetAppDataModuleDir() + SEPARATOR + moduleName + SEPARATOR + RESOURCES_DIR_NAME +
                              BASE_DIR + PROFILE_DIR + SEPARATOR + configJsonEnd;
-    return GetBufferByAppDataPath(sourcePath);
+    std::vector<uint8_t> jsonBuffer = GetBufferByAppDataPath(sourcePath);
+    jsonBuffer.push_back('\0');
+    return jsonBuffer;
 }
 } // namespace Platform
 } // namespace AbilityRuntime

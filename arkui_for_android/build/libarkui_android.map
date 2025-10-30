@@ -95,6 +95,7 @@
       "OHOS::Ace::SystemProperties::taskPriorityAdjustmentEnable_";
       "OHOS::Ace::SystemProperties::debugEnabled_";
       "OHOS::Ace::SystemProperties::debugFlags_";
+      "OHOS::Ace::SystemProperties::ConfigChangePerform()";
       OHOS::Ace::V2::PATTERN_LOCK_ETS_TAG;
       OHOS::Ace::V2::QRCODE_ETS_TAG;
       OHOS::Ace::V2::RELATIVE_CONTAINER_ETS_TAG;
@@ -125,6 +126,18 @@
 
       virtual?thunk?to?OHOS::Ace::Animator::~Animator??;
       virtual?thunk?to?OHOS::Ace::NG::LayoutProperty::~LayoutProperty??;
+
+      "OHOS::Rosen::RenderContext::RenderContext()";
+      "OHOS::Rosen::RenderContext::InitializeEglContext()";
+      "OHOS::Rosen::RenderContext::~RenderContext()";
+      "OHOS::ColorManager::GetColorSpaceByJSObject(napi_env__*, napi_value__*)";
+      "OHOS::ColorManager::CreateJsColorSpaceObject(napi_env__*, std::__ndk1::shared_ptr<OHOS::ColorManager::ColorSpace>&)";
+      "OHOS::Rosen::RSPixelMapUtil::GetPixelmapColorSpace(std::__ndk1::shared_ptr<OHOS::Media::PixelMap> const&)";
+      "OHOS::Rosen::RSPaintFilterCanvas::RSPaintFilterCanvas(OHOS::Rosen::Drawing::Surface*, float)";
+      "OHOS::Rosen::HpsBlurFilter::ApplyHpsBlur(OHOS::Rosen::Drawing::Canvas&, std::__ndk1::shared_ptr<OHOS::Rosen::Drawing::Image> const&, OHOS::Rosen::Drawing::HpsBlurParameter const&, float, std::__ndk1::shared_ptr<OHOS::Rosen::Drawing::ColorFilter>, OHOS::Rosen::RSColor const&) const";
+      "OHOS::Rosen::GEMESABlurShaderFilter::GEMESABlurShaderFilter(OHOS::Rosen::Drawing::GEMESABlurShaderFilterParams const&)";
+      "OHOS::Rosen::GEShaderFilter::ProcessImage(OHOS::Rosen::Drawing::Canvas&, std::__ndk1::shared_ptr<OHOS::Rosen::Drawing::Image>, OHOS::Rosen::Drawing::RectF const&, OHOS::Rosen::Drawing::RectF const&)";
+      vtable?for?OHOS::Rosen::RSPaintFilterCanvas;
 
       vtable?for?OHOS::Ace::AceApplicationInfo;
       vtable?for?OHOS::Ace::Animator;
@@ -605,6 +618,7 @@
       "panda::PrintStack(std::__ndk1::vector<unsigned int, std::__ndk1::allocator<unsigned int> > const&, std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char> >&)";
       "panda::utf::ConvertRegionMUtf8ToUtf16(unsigned char const*, unsigned short*, unsigned int, unsigned int, unsigned int)";
       "panda::os::mem::MmapDeleter(std::byte*, unsigned int)";
+      "panda::StringRef::NewFromUtf8(panda::ecmascript::EcmaVM const*, char const*, int)";
       "OHOS::HiviewDFX::AppEventStore::GetInstance()";
       "OHOS::HiviewDFX::AppEventStore::DeleteData(long, std::__ndk1::vector<long, std::__ndk1::allocator<long> > const&)";
       "OHOS::HiviewDFX::AppEventPack::GetSeq() const";
@@ -723,6 +737,9 @@
       "CountTrace";
       "CountTraceEx";
       "IsTagEnabled";
+      "SetCallbacksNapi";
+      "RegisterTraceListenerNapi";
+      "UnregisterTraceListenerNapi";
     };
   local:
     *;

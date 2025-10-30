@@ -31,8 +31,11 @@
 #import "StageContainerView.h"
 #import "StageSecureContainerView.h"
 #import "WindowView.h"
+#import "StageAssetManager.h"
 #include "app_main.h"
 #include "window_view_adapter.h"
+#include "dump_helper.h"
+#include "version_printer.h"
 
 #define PHOTO_PICKER_TYPE_IMAGE @"image/*"
 #define PHOTO_PICKER_TYPE_VIDEO @"video/*"
@@ -90,21 +93,40 @@ int32_t CURRENT_STAGE_INSTANCE_Id = 0;
         _instanceId = InstanceIdGenerator.getAndIncrement;
         self.instanceName = [NSString stringWithFormat:@"%@:%d", instanceName, _instanceId];
         NSLog(@"StageVC->%@ init, instanceName is : %@", self, self.instanceName);
-        _cInstanceName = [self getCPPString:self.instanceName];
         NSArray * nameArray = [self.instanceName componentsSeparatedByString:@":"];
         if (nameArray.count >= 3) {
             self.bundleName = nameArray[0];
             self.moduleName = nameArray[1];
             self.abilityName = nameArray[2];
+            NSString *moduleNamePath = [NSString stringWithFormat:@"%@.%@",self.bundleName, self.moduleName];
+            BOOL isExistsAtPath = [self ExistDir:moduleNamePath];
+            if (isExistsAtPath && nameArray.count >= 4) {
+                self.moduleName = moduleNamePath;
+                self.instanceName = [NSString stringWithFormat:@"%@:%@:%@:%@",
+                        nameArray[0], self.moduleName, nameArray[2], nameArray[3]];
+            }
         }
+        _cInstanceName = [self getCPPString:self.instanceName];
         _pluginList = [[NSMutableArray alloc] init];
         [self initBridge];
         self.homeIndicatorHidden = NO;
         self.interfaceOrientationMask = UIInterfaceOrientationMaskAll;
+        OHOS::Ace::Platform::VersionPrinter::printVersion();
         [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(orientationMaskUpdate:)
             name:@(kOrientationMaskUpdateNotificationName) object:nil];
     }
     return self;
+}
+
+- (BOOL)ExistDir:(NSString *)filePath
+{
+    NSArray *pkgJsonFileList = [[StageAssetManager assetManager] getAssetAllFilePathList];
+    for (NSString *pkgJsonPath in pkgJsonFileList) {
+        if ([pkgJsonPath containsString:[NSString stringWithFormat:@"/%@", filePath]]) {
+            return YES;
+        }
+    }
+    return NO;
 }
 
 - (void)orientationMaskUpdate: (NSNotification *)notification {
@@ -189,7 +211,7 @@ int32_t CURRENT_STAGE_INSTANCE_Id = 0;
 }
 
 - (void)initBridge {
-    _bridgePluginManager = [BridgePluginManager innerBridgePluginManager:_instanceId];
+    _bridgePluginManager = [BridgePluginManager sharedInstance];
 }
 
 - (void)viewDidLoad {
@@ -218,6 +240,18 @@ int32_t CURRENT_STAGE_INSTANCE_Id = 0;
     AppMain::GetInstance()->DispatchOnForeground(_cInstanceName);
 }
 
+- (void)saveDumpFile:(NSArray<NSString *> *)dumpParams {
+    NSLog(@"saveDumpFile enter");
+
+    std::vector<std::string> dumpParamsVector;
+    for (NSString *dumpParam in dumpParams) {
+        dumpParamsVector.push_back([dumpParam UTF8String]);
+    }
+
+    OHOS::Ace::Platform::DumpHelper::Dump(_instanceId, dumpParamsVector);
+    NSLog(@"saveDumpFile finished");
+}
+
 - (BOOL)supportWindowPrivacyMode {
     return false;
 }
@@ -232,9 +266,8 @@ int32_t CURRENT_STAGE_INSTANCE_Id = 0;
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    if (_bridgePluginManager) {
-        [_bridgePluginManager updateCurrentInstanceId:_instanceId];
-    }
+
+    NSLog(@"StageVC->%@ viewWillAppear call.", self);
     if (_needOnForeground) {
         AppMain::GetInstance()->DispatchOnForeground(_cInstanceName);
     }
@@ -272,8 +305,6 @@ int32_t CURRENT_STAGE_INSTANCE_Id = 0;
         [_windowView notifyWindowDestroyed];
         _windowView = nil;
         _stageContainerView = nil;
-        [BridgePluginManager innerUnbridgePluginManager:_instanceId];
-        _bridgePluginManager = nil;
         [self deallocArkUIXPlugin];
         AppMain::GetInstance()->DispatchOnDestroy(_cInstanceName);
         [self removeFromParentViewController];
@@ -289,8 +320,6 @@ int32_t CURRENT_STAGE_INSTANCE_Id = 0;
     _stageContainerView = nil;
     [_platformPlugin platformRelease];
     _platformPlugin = nil;
-    [BridgePluginManager innerUnbridgePluginManager:_instanceId];
-    _bridgePluginManager = nil;
     [self deallocArkUIXPlugin];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     AppMain::GetInstance()->DispatchOnDestroy(_cInstanceName);

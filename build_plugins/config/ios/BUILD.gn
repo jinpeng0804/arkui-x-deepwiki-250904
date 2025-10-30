@@ -115,7 +115,7 @@ config("runtime_library") {
   } else {
     common_ccflags += [ "-miphonesimulator-version-min=$ios_deployment_target" ]
   }
-
+  cflags = [ "-fno-omit-frame-pointer" ]
   cflags_cc = common_ccflags
   cflags_objcc = common_ccflags
   framework_dirs = [ sysroot ]

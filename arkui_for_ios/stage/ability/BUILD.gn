@@ -13,6 +13,7 @@
 
 import("//build/ohos.gni")
 import("//foundation/arkui/ace_engine/ace_config.gni")
+import("//build_plugins/version.gni")
 
 # build static
 template("stage_ios_standard_source_set") {
@@ -33,9 +34,8 @@ template("stage_ios_standard_source_set") {
       "//foundation/arkui/ace_engine/adapter/ios/entrance",
       "//foundation/appframework/ability/ability_runtime/cross_platform/interfaces/kits/native/appkit",
       "//foundation/arkui/ace_engine/adapter/ios/capability/bridge",
+      "//foundation/arkui/ace_engine/adapter/ios/capability/web",
       "//foundation/arkui/ace_engine/adapter/ios/entrance/accessibility",
-      "//third_party/",
-      "//third_party/flutter/engine",
       "$ace_root/frameworks",
       "$ace_root",
       "//foundation/arkui/ace_engine/adapter/ios/entrance/plugin_lifecycle",
@@ -47,7 +47,10 @@ template("stage_ios_standard_source_set") {
       defines += [ "_ARM64_" ]
     }
 
-    defines += [ "BUILD_FOR_ARKUI" ]
+    defines += [
+      "BUILD_FOR_ARKUI",
+      "ARKUI_X_VERSION=\"$arkuix_sdk_version\"",
+    ]
 
     cflags_objc = [
       "-fvisibility=default",
@@ -71,6 +74,7 @@ template("stage_ios_standard_source_set") {
       "application_context_adapter.mm",
       "stage_application_info_adapter.cpp",
       "stage_asset_provider.mm",
+      "version_printer.cpp",
       "window_view_adapter.mm",
     ]
     deps = [
@@ -79,8 +83,6 @@ template("stage_ios_standard_source_set") {
       "//foundation/arkui/ace_engine/adapter/ios/entrance/logIntercept:logIntercept",
       "//foundation/arkui/ace_engine/adapter/ios/entrance/plugin_lifecycle:plugin_lifecycle",
     ]
-
-    deps += [ "$ace_flutter_engine_root:flutter_for_ng" ]
 
     frameworks = [
       "CoreFoundation.framework",

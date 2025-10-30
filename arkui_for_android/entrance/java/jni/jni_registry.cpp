@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,8 +14,6 @@
  */
 
 #include "adapter/android/entrance/java/jni/jni_registry.h"
-
-#include "flutter/fml/platform/android/jni_util.h"
 
 #include "adapter/android/capability/java/jni/bridge/bridge_jni.h"
 #include "adapter/android/capability/java/jni/clipboard/clipboard_jni.h"
@@ -53,8 +51,6 @@ bool JniRegistry::Register()
         LOGE("JNI Initialize: failed to register DumpHelper");
         return false;
     }
-
-    fml::jni::InitJavaVM(JniEnvironment::GetInstance().GetVM().get());
 
     if (!WindowViewJni::RegisterNatives(jniEnv.get())) {
         LOGE("JNI Initialize: failed to register WindowViewJni");
@@ -148,8 +144,6 @@ bool JniRegistry::Register()
 bool JniRegistry::ReleaseInstance(int32_t instanceId)
 {
     TextInputJni::ReleaseInstance(instanceId);
-
-    BridgeJni::ReleaseInstance(instanceId);
 
     AcePlatformPluginJni::ReleaseInstance(instanceId);
 

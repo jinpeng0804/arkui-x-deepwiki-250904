@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -40,8 +40,8 @@
 #include "platformview_event_hub.h"
 
 namespace OHOS::Ace::NG {
-PlatformViewPattern::PlatformViewPattern(const std::string& id) : id_(id) {}
-
+PlatformViewPattern::PlatformViewPattern(const std::string& id, const std::optional<std::string>& data)
+    : id_(id), data_(data) {}
 void PlatformViewPattern::RequestFocus()
 {
     auto host = GetHost();
@@ -70,7 +70,9 @@ void PlatformViewPattern::OnTextureRefresh(void* surface)
     CHECK_NULL_VOID(renderContextForPlatformView);
     renderContextForPlatformView->MarkNewFrameAvailable(surface);
     UpdatePlatformViewLayoutIfNeeded();
+#ifdef IOS_PLATFORM
     isTextureReady = true;
+#endif
 }
 
 void PlatformViewPattern::RegisterPlatformViewEvent()
@@ -144,7 +146,7 @@ void PlatformViewPattern::PlatformViewInitialize()
     CHECK_NULL_VOID(host);
     auto context = PipelineContext::GetCurrentContext();
     CHECK_NULL_VOID(context);
-    platformView_ = AceType::MakeRefPtr<NG::PlatformViewImpl>(id_);
+    platformView_ = AceType::MakeRefPtr<NG::PlatformViewImpl>(id_, data_);
     platformView_->InitPlatformView();
     platformViewWeakPtr_ = platformView_;
     renderSurface_ = RenderSurface::Create();
@@ -278,13 +280,12 @@ void PlatformViewPattern::BeforeSyncGeometryProperties(const DirtySwapConfig& co
     }
     localPosition_ = geometryNode->GetContentOffset();
     if (!hasPlatformViewInit_) {
-        if (!SystemProperties::GetExtSurfaceEnabled()) {
-            PlatformViewSizeInit();
-        }
         hasPlatformViewInit_ = true;
     }
     UpdateSurfaceBounds(false, config.frameOffsetChange);
+#ifdef IOS_PLATFORM
     isTextureReady = false;
+#endif
     UpdatePlatformViewLayoutIfNeeded();
     host->MarkNeedSyncRenderTree();
 }
@@ -297,9 +298,11 @@ void PlatformViewPattern::UpdatePlatformViewLayoutIfNeeded()
     OffsetF offset = localPosition_ + transformRelativeOffset;
     if (lastDrawSize_ != drawSize_ || lastOffset_ != offset) {
         platformView_->UpdatePlatformViewLayout(drawSize_, offset);
+#ifdef IOS_PLATFORM
         if (!isTextureReady) {
             return;
         }
+#endif
         if (renderContextForPlatformView_) {
             renderContextForPlatformView_->SetBounds(
                 localPosition_.GetX(), localPosition_.GetY(), drawSize_.Width(), drawSize_.Height());
@@ -327,20 +330,6 @@ void PlatformViewPattern::DumpAdvanceInfo()
     }
 }
 
-void PlatformViewPattern::PlatformViewSizeInit()
-{
-    CHECK_RUN_ON(UI);
-    ContainerScope scope(GetHostInstanceId());
-    auto context = PipelineContext::GetCurrentContext();
-    CHECK_NULL_VOID(context);
-    auto host = GetHost();
-    CHECK_NULL_VOID(host);
-    auto eventHub = host->GetEventHub<PlatformViewEventHub>();
-    CHECK_NULL_VOID(eventHub);
-    LOGI("PlatformView[%{public}s] triggers onLoad and OnSurfaceCreated callback", id_.c_str());
-    eventHub->FireSurfaceInitEvent(id_, host->GetId());
-}
-
 void PlatformViewPattern::PlatformViewSizeChange(const RectF& surfaceRect, bool needFireNativeEvent)
 {
     // do not trigger when the size is first initialized
@@ -362,7 +351,6 @@ void PlatformViewPattern::InitEvent()
     CHECK_NULL_VOID(host);
     auto eventHub = host->GetEventHub<PlatformViewEventHub>();
     CHECK_NULL_VOID(eventHub);
-    eventHub->SetOnSurfaceInitEvent(CreateExternalEvent());
     auto gestureHub = eventHub->GetOrCreateGestureEventHub();
     CHECK_NULL_VOID(gestureHub);
     InitTouchEvent(gestureHub);
@@ -420,33 +408,6 @@ void PlatformViewPattern::PlatformViewDispatchTouchEvent(const TouchLocationInfo
     } else if (changedPoint.GetTouchType() == TouchType::CANCEL) {
         platformView_->HandleTouchCancel(pointOffset);
     }
-}
-
-void PlatformViewPattern::FireExternalEvent(
-    RefPtr<NG::PipelineContext> context, const std::string& componentId, const uint32_t nodeId, const bool isDestroy)
-{
-    CHECK_NULL_VOID(context);
-#ifdef NG_BUILD
-    auto frontEnd = AceType::DynamicCast<DeclarativeFrontendNG>(context->GetFrontend());
-#else
-    auto frontEnd = AceType::DynamicCast<DeclarativeFrontend>(context->GetFrontend());
-#endif
-    CHECK_NULL_VOID(frontEnd);
-    auto jsEngine = frontEnd->GetJsEngine();
-    jsEngine->FireExternalEvent(componentId, nodeId, isDestroy);
-}
-
-ExternalEvent PlatformViewPattern::CreateExternalEvent()
-{
-    return
-        [weak = AceType::WeakClaim(this)](const std::string& componentId, const uint32_t nodeId, const bool isDestroy) {
-            auto pattern = weak.Upgrade();
-            CHECK_NULL_VOID(pattern);
-            ContainerScope scope(pattern->GetHostInstanceId());
-            auto context = PipelineContext::GetCurrentContext();
-            CHECK_NULL_VOID(context);
-            pattern->FireExternalEvent(context, componentId, nodeId, isDestroy);
-        };
 }
 
 void PlatformViewPattern::UpdateSurfaceBounds(bool needForceRender, bool frameOffsetChange)

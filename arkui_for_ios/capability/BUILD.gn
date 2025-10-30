@@ -18,13 +18,6 @@ config("capability_config") {
   configs = [ "$ace_root:ace_config" ]
 
   include_dirs = [
-    "//third_party/",
-    "//third_party/flutter",
-    "//third_party/flutter/engine",
-    "//third_party/flutter/skia",
-    "//third_party/flutter/engine/flutter/shell/platform/darwin/common/framework/Headers",
-    "//third_party/flutter/engine/flutter/shell/platform/darwin/ios/framework/Headers",
-    "//third_party/flutter/engine/flutter/shell/common",
     "$ace_root/frameworks",
     "$ace_root",
     "$ace_root/adapter/ios/entrance",
@@ -37,15 +30,9 @@ config("capability_config") {
     "$ace_root/adapter/ios/capability/surface",
     "$ace_root/adapter/ios/stage/ability",
     "$ace_root/adapter/ios/capability/web",
+    "//foundation/appframework/arkui",
     "//foundation/graphic/graphic_2d/rosen/modules",
-    "$ace_root/frameworks/core/components_ng/pattern/web/cross_platform",
     "$ace_root/adapter/ios/capability/font",
-  ]
-
-  include_dirs -= [
-    "//third_party/flutter",
-    "//third_party/flutter/skia",
-    "//third_party/flutter/engine/flutter/shell/common",
   ]
 
   include_dirs += [
@@ -66,7 +53,6 @@ ohos_source_set("text_input") {
   sources = [
     "$ace_root/adapter/ios/capability/editing/KeyboardTypeMapper.m",
     "$ace_root/adapter/ios/capability/editing/iOSTxtInputManager.mm",
-    "//third_party/flutter/engine/flutter/fml/platform/darwin/string_range_sanitization.mm",
   ]
 }
 
@@ -136,9 +122,11 @@ template("ace_capability_ios_source_set") {
       "$ace_root/adapter/ios/capability/platformview/render/RenderView.mm",
 
       # bridge
+      "$ace_root/adapter/ios/capability/bridge/BridgeGCDTaskQueue.mm",
       "$ace_root/adapter/ios/capability/bridge/BridgeManagerHolder.mm",
       "$ace_root/adapter/ios/capability/bridge/BridgePlugin+jsMessage.mm",
       "$ace_root/adapter/ios/capability/bridge/BridgePlugin.mm",
+      "$ace_root/adapter/ios/capability/bridge/BridgePlugin+internal.mm",
       "$ace_root/adapter/ios/capability/bridge/BridgePluginManager+internal.mm",
       "$ace_root/adapter/ios/capability/bridge/BridgePluginManager.mm",
       "$ace_root/adapter/ios/capability/bridge/BridgeTaskInfo.mm",
@@ -161,11 +149,16 @@ template("ace_capability_ios_source_set") {
       "$ace_root/adapter/ios/capability/web/AceWebControllerBridge.mm",
       "$ace_root/adapter/ios/capability/web/AceWebDownloadImpl.cpp",
       "$ace_root/adapter/ios/capability/web/AceWebErrorReceiveInfoObject.cpp",
+      "$ace_root/adapter/ios/capability/web/AceWebInfoManager.mm",
       "$ace_root/adapter/ios/capability/web/AceWebMessageExtImpl.cpp",
       "$ace_root/adapter/ios/capability/web/AceWebObject.cpp",
       "$ace_root/adapter/ios/capability/web/AceWebPatternBridge.cpp",
+      "$ace_root/adapter/ios/capability/web/AceWebPatternOCBridge.mm",
       "$ace_root/adapter/ios/capability/web/AceWebResourcePlugin.mm",
+      "$ace_root/adapter/ios/capability/web/AceWebSchemeHandler.cpp",
       "$ace_root/adapter/ios/capability/web/WebMessageChannel.mm",
+      "$ace_root/adapter/ios/capability/web/scheme_handler/resource_handler.mm",
+      "$ace_root/adapter/ios/capability/web/scheme_handler/resource_request.mm",
 
       # font
       "$ace_root/adapter/ios/capability/font/font_platform_impl.cpp",
@@ -179,6 +172,15 @@ template("ace_capability_ios_source_set") {
     }
     part_name = "ace_engine_cross"
     subsystem_name = "arkui"
+
+    frameworks = [
+      "WebKit.framework",
+      "Security.framework",
+    ]
+
+    include_dirs = [
+      "//foundation/arkui/ace_engine/frameworks/core/interfaces/native/utility",
+    ]
   }
 }
 

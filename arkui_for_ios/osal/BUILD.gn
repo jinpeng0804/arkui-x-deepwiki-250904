@@ -30,6 +30,7 @@ template("ace_osal_ios_source_set") {
       defines += [ "USE_NEW_SKIA" ]
     }
     sources = [
+      "accessibility_event_manager.cpp",
       "accessibility_manager_impl.cpp",
       "ace_checker.cpp",
       "ace_engine_ext.cpp",
@@ -47,7 +48,6 @@ template("ace_osal_ios_source_set") {
       "display_info_utils.cpp",
       "display_manager_ios.cpp",
       "drag_window.cpp",
-      "drawable_descriptor_ios.cpp",
       "drawing_color_filter_ios.cpp",
       "drawing_lattice_ios.cpp",
       "event_report.cpp",
@@ -112,7 +112,6 @@ template("ace_osal_ios_source_set") {
       "$app_framework_window_path/utils/include",
       "//third_party/zlib",
       "//commonlibrary/c_utils/base/include",
-      "$flutter_root/engine/",
       "//foundation/graphic/graphic_surface/interfaces/inner_api/surface",
       "$ace_root/adapter/ios/entrance/logIntercept",
       "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter",
@@ -135,8 +134,6 @@ template("ace_osal_ios_source_set") {
       "$ace_root:ace_config",
       "$crossplatform_multimedia_root/image_framework/interfaces/innerkits:image_external_config",
     ]
-
-    deps += [ "$ace_flutter_engine_root:flutter_for_ng" ]
 
     if (defined(config.enable_rosen_backend) && config.enable_rosen_backend) {
       deps += [ "$ace_graphic/rosen/modules/render_service_client:librender_service_client_static" ]

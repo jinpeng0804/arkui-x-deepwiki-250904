@@ -295,6 +295,11 @@ bool RSSystemProperties::GetBlurEnabled()
     return true;
 }
 
+bool RSSystemProperties::GetFgBlenderEnabled()
+{
+    return true;
+}
+
 bool RSSystemProperties::GetForegroundFilterEnabled()
 {
     return true;
@@ -478,6 +483,11 @@ uint32_t RSSystemProperties::GetHybridRenderTextBlobLenCount()
 }
 
 bool RSSystemProperties::GetSupportScreenFreezeEnabled()
+{
+    return false;
+}
+
+bool RSSystemProperties::GetClipRRectOptimizationEnabled()
 {
     return false;
 }

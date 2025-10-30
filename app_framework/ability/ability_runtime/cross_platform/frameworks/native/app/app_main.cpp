@@ -249,14 +249,14 @@ void AppMain::DispatchOnCreate(const std::string& instanceName, const std::strin
     eventHandler_->PostTask(task);
 }
 
-void AppMain::DispatchOnNewWant(const std::string& instanceName)
+void AppMain::DispatchOnNewWant(const std::string& instanceName, const std::string& params)
 {
     HILOG_INFO("DispatchOnNewWant called.");
     if (!eventHandler_) {
         HILOG_ERROR("eventHandler_ is nullptr");
         return;
     }
-    auto task = [instanceName]() { AppMain::GetInstance()->HandleDispatchOnNewWant(instanceName); };
+    auto task = [instanceName, params]() { AppMain::GetInstance()->HandleDispatchOnNewWant(instanceName, params); };
     eventHandler_->PostTask(task);
 }
 
@@ -366,6 +366,8 @@ void AppMain::HandleDispatchOnCreate(const std::string& instanceName, const std:
     }
     auto want = TransformToWant(instanceName);
     std::string moduleName = want.GetModuleName();
+    std::string bundleName = want.GetBundleName();
+    UpdateAbilityBundleName(bundleName);
     StageAssetManager::GetInstance()->isDynamicModule(moduleName, true);
     bool isDynamicModule = StageAssetManager::GetInstance()->IsDynamicUpdateModule(moduleName);
     if (isDynamicModule) {
@@ -397,8 +399,9 @@ void AppMain::HandleDispatchOnCreate(const std::string& instanceName, const std:
         auto dependencies = hapModuleInfo->dependencies;
         if (!dependencies.empty()) {
             for (const auto& dependency : dependencies) {
-                StageAssetManager::GetInstance()->CopyHspResourcePath(dependency);
-                moduleNames.emplace_back(dependency);
+                std::string moduleName = StageAssetManager::GetInstance()->GetSplicingModuleName(dependency);
+                StageAssetManager::GetInstance()->CopyHspResourcePath(moduleName);
+                moduleNames.emplace_back(moduleName);
             }
         }
     }
@@ -407,7 +410,17 @@ void AppMain::HandleDispatchOnCreate(const std::string& instanceName, const std:
     application_->HandleAbilityStage(TransformToWant(instanceName, params));
 }
 
-void AppMain::HandleDispatchOnNewWant(const std::string& instanceName)
+void AppMain::UpdateAbilityBundleName(const std::string& bundleName)
+{
+    if (bundleContainer_ == nullptr) {
+        HILOG_ERROR("bundleContainer_ is nullptr");
+        return;
+    }
+    bundleContainer_->SetBundleName(bundleName);
+    StageAssetManager::GetInstance()->SetBundleName(bundleName);
+}
+
+void AppMain::HandleDispatchOnNewWant(const std::string& instanceName, const std::string& params)
 {
     HILOG_INFO("HandleDispatchOnNewWant called.");
     if (application_ == nullptr) {
@@ -415,7 +428,7 @@ void AppMain::HandleDispatchOnNewWant(const std::string& instanceName)
         return;
     }
 
-    application_->DispatchOnNewWant(TransformToWant(instanceName));
+    application_->DispatchOnNewWant(TransformToWant(instanceName, params));
 }
 
 void AppMain::HandleDispatchOnForeground(const std::string& instanceName)
@@ -425,8 +438,10 @@ void AppMain::HandleDispatchOnForeground(const std::string& instanceName)
         HILOG_ERROR("application_ is nullptr");
         return;
     }
-
-    application_->DispatchOnForeground(TransformToWant(instanceName));
+    auto want = TransformToWant(instanceName);
+    std::string bundleName = want.GetBundleName();
+    UpdateAbilityBundleName(bundleName);
+    application_->DispatchOnForeground(want);
 }
 
 void AppMain::HandleDispatchOnBackground(const std::string& instanceName)

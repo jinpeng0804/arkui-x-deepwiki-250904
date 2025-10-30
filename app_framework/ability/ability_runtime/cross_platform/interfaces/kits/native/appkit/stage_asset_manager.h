@@ -57,9 +57,10 @@ public:
     std::string GetAppDataModuleDir() const;
     bool GetAppDataModuleAssetList(const std::string& path, std::vector<std::string>& fileFullPaths, bool onlyChild);
     std::vector<uint8_t> GetBufferByAppDataPath(const std::string& fileFullPath);
-    std::vector<uint8_t> GetAotBuffer(const std::string &fileName);
     void InitModuleVersionCode();
     void isDynamicModule(const std::string& moduleName, bool needUpdate);
+    void SetBundleName(const std::string& bundleName);
+    std::string GetSplicingModuleName(const std::string& moduleName);
     bool IsDynamicUpdateModule(const std::string& moduleName);
 
 private:

@@ -1040,8 +1040,7 @@ void AccessibilityManagerImpl::ProcessAccessibilityEvent(
     CHECK_NULL_VOID(node);
     windowId_ = ngPipeline->GetWindowId();
     int64_t elementId = DEFAULT_ElEMENTID;
-    if (eventType == static_cast<size_t>(OHOS::Ace::AccessibilityEventType::TEXT_CHANGE) ||
-        eventType == static_cast<size_t>(OHOS::Ace::AccessibilityEventType::PAGE_CHANGE)) {
+    if (eventType == static_cast<size_t>(OHOS::Ace::AccessibilityEventType::TEXT_CHANGE)) {
         elementId = accessibilityEvent.nodeId;
     }
     UpdateElementInfos(elementId, node, needAsync, eventType);
@@ -1088,9 +1087,16 @@ void AccessibilityManagerImpl::SendAccessibilityAsyncEvent(const AccessibilityEv
         case AccessibilityEventType::SCROLL_END:
             ProcessAccessibilityEvent(accessibilityEvent, true, static_cast<size_t>(accessibilityEvent.type));
             break;
+        case AccessibilityEventType::REQUEST_FOCUS:
+            SendAccessibilityEventOC(accessibilityEvent.nodeId, static_cast<int>(accessibilityEvent.windowId),
+                static_cast<size_t>(accessibilityEvent.type));
+            break;
         case AccessibilityEventType::FOCUS:
             SendAccessibilityEventOC(
                 accessibilityEvent.nodeId, static_cast<int>(windowId_), static_cast<size_t>(accessibilityEvent.type));
+            break;
+        case AccessibilityEventType::ANNOUNCE_FOR_ACCESSIBILITY:
+            AnnounceForAccessibilityOC(accessibilityEvent.textAnnouncedForAccessibility);
             break;
         default:
             break;
@@ -2049,5 +2055,21 @@ void AccessibilityManagerImpl::UpdateNodeChildIds(const RefPtr<AccessibilityNode
 void AccessibilityManagerImpl::SetPipelineContext(const RefPtr<PipelineBase>& context)
 {
     context_ = context;
+}
+
+void AccessibilityManagerImpl::FireAccessibilityEventCallback(uint32_t eventId, int64_t parameter)
+{
+    auto eventType = static_cast<AccessibilityCallbackEventId>(eventId);
+    AccessibilityEvent event;
+    switch (eventType) {
+        case AccessibilityCallbackEventId::ON_LOAD_PAGE:
+            event.nodeId = parameter;
+            event.windowChangeTypes = WindowUpdateType::WINDOW_UPDATE_ACTIVE;
+            event.type = AccessibilityEventType::CHANGE;
+            SendAccessibilityAsyncEvent(event);
+            break;
+        default:
+            break;
+    }
 }
 } // namespace OHOS::Ace::Framework

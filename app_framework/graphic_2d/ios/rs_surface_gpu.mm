@@ -58,7 +58,9 @@ std::unique_ptr<RSSurfaceFrame> RSSurfaceGPU::RequestFrame(
     if (!SetupGrContext()) {
         return nullptr;
     }
-    renderContext_->CreateEGLSurface(layer_);
+    if (!renderContext_->CreateEGLSurface(layer_)) {
+        return nullptr;
+    }
     renderContext_->MakeCurrent(layer_, nullptr);
     auto frame = std::make_unique<RSSurfaceFrameIOS>(width, height);
     frame->SetRenderContext(renderContext_);
@@ -110,6 +112,10 @@ uint32_t RSSurfaceGPU::GetQueueSize() const
 {
     /* cache buffer count */
     return 0x3;
+}
+
+void RSSurfaceGPU::SetCleanUpHelper(std::function<void()> func)
+{
 }
 
 GraphicColorGamut RSSurfaceGPU::GetColorSpace() const

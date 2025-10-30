@@ -181,13 +181,13 @@ int32_t AudioSystemManager::SetExtraParameters(const std::string &key,
     return ERR_NOT_SUPPORTED;
 }
 
-int32_t AudioSystemManager::SetVolume(AudioVolumeType volumeType, int32_t volumeLevel) const
+int32_t AudioSystemManager::SetVolume(AudioVolumeType volumeType, int32_t volumeLevel, int32_t uid) const
 {
     AUDIO_WARNING_LOG("%{public}s is not supported", __func__);
     return ERR_NOT_SUPPORTED;
 }
 
-int32_t AudioSystemManager::GetVolume(AudioVolumeType volumeType) const
+int32_t AudioSystemManager::GetVolume(AudioVolumeType volumeType, int32_t uid) const
 {
     AUDIO_WARNING_LOG("%{public}s is not supported", __func__);
     return 0;
@@ -284,7 +284,8 @@ int32_t AudioSystemManager::SelectInputDevice(
 }
 
 int32_t AudioSystemManager::SelectOutputDevice(sptr<AudioRendererFilter> audioRendererFilter,
-    std::vector<std::shared_ptr<AudioDeviceDescriptor>> audioDeviceDescriptors) const
+    std::vector<std::shared_ptr<AudioDeviceDescriptor>> audioDeviceDescriptors,
+    const int32_t audioDeviceSelectMode) const
 {
     AUDIO_WARNING_LOG("%{public}s is not supported", __func__);
     return ERR_NOT_SUPPORTED;

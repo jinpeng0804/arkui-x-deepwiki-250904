@@ -86,7 +86,6 @@ public class WindowViewSurface extends SurfaceView implements SurfaceHolder.Call
      */
     @Override
     public void setInstanceId(int instanceId) {
-        setId(instanceId);
     }
 
     private WindowViewCommon getWindowViewCommon() {
@@ -394,5 +393,29 @@ public class WindowViewSurface extends SurfaceView implements SurfaceHolder.Call
     @Override
     public boolean getWindowOrientation() {
         return windowViewCommon.getWindowOrientation();
+    }
+
+    /**
+     * The action of pre ime key.
+     *
+     * @param keyCode key code.
+     * @param event Action and button state.
+     * @return true if key on ime run success , false otherwise.
+     */
+    @Override
+    public boolean onKeyPreIme(int keyCode, KeyEvent event) {
+        return windowViewCommon.onKeyPreIme(keyCode, event, getContext());
+    }
+
+    /**
+     * The action of pre ime key.
+     *
+     * @param keyCode key code.
+     * @param event Action and button state.
+     * @return true if key on ime run success , false otherwise.
+     */
+    @Override
+    public boolean superOnKeyPreIme(int keyCode, KeyEvent event) {
+        return super.onKeyPreIme(keyCode, event);
     }
 }

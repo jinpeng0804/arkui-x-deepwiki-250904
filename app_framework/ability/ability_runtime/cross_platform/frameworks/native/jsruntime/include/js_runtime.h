@@ -77,6 +77,10 @@ public:
         const DebuggerPostTask& debuggerPostTask = {});
     void RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo);
     bool IsNeedUpdate(const std::string& moduleName, const std::string& modulePath);
+    void SetBundleName(const std::string& bundleName)
+    {
+        bundleName_ = bundleName;
+    }
 
 protected:
     JsRuntime() = default;
@@ -93,7 +97,6 @@ protected:
     bool isBundle_ = true;
     napi_env env_ = nullptr;
     std::string codePath_;
-    std::string appLibPath_;
     std::string moduleName_;
     std::unique_ptr<NativeReference> methodRequireNapiRef_;
     std::shared_ptr<AppExecFwk::EventHandler> eventHandler_;

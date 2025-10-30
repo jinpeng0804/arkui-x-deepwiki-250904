@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,51 +18,14 @@
 
 @implementation BridgeManagerHolder
 
-static NSMutableDictionary<NSString*, BridgePluginManager*>* bridgeManagerMap = nil;
 
-+ (void)initialize {
-    bridgeManagerMap = [[NSMutableDictionary alloc] init];
-}
-
-+ (BridgePluginManager*)getBridgeManagerWithInceId:(int32_t)instanceId {
-    if (![self isValidId:instanceId]) {
-        return nil;
-    }
++ (BridgePluginManager*)getBridgePluginManager
+{
     BridgePluginManager* object = nil;
     @synchronized (self) {
-        object = [bridgeManagerMap objectForKey:[self formatKeyId:instanceId]];
+        object = [BridgePluginManager sharedInstance];
     }
     return object;
 }
 
-+ (void)addBridgeManager:(BridgePluginManager*)object inceId:(int32_t)instanceId {
-    if (![self isValidId:instanceId] || !object) {
-        return;
-    }
-    @synchronized (self) {
-        if ([bridgeManagerMap objectForKey:[self formatKeyId:instanceId]]) {
-            return;
-        }
-        [bridgeManagerMap setObject:object forKey:[self formatKeyId:instanceId]];
-    }
-}
-
-+ (void)removeBridgeManagerWithId:(int32_t)instanceId {
-    if (![self isValidId:instanceId]) {
-        return;
-    }
-    @synchronized (self) {
-        BridgePluginManager* manager = [self getBridgeManagerWithInceId:instanceId];
-        [manager unRegisterBridgePlugin];
-        [bridgeManagerMap removeObjectForKey:[self formatKeyId:instanceId]];
-    }
-}
-
-+ (BOOL)isValidId:(int32_t)instanceId {
-    return instanceId >= 0;
-}
-
-+ (NSString*)formatKeyId:(int32_t)instanceId {
-    return [NSString stringWithFormat:@"%d", instanceId];
-}
 @end

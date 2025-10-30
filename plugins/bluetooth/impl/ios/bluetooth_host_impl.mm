@@ -49,6 +49,8 @@ BluetoothHostImpl::~BluetoothHostImpl() {}
 
 void BluetoothHostImpl::RegisterObserver(const sptr<IBluetoothHostObserver>& observer)
 {
+    BluetoothCentralManager* centralManager = [BluetoothCentralManager sharedInstance];
+    [centralManager getBleState];
     std::lock_guard<std::mutex> lock(observerMutex_);
     registerObserverCallBack_ = observer;
 }
@@ -230,6 +232,11 @@ int32_t BluetoothHostImpl::GetBleMaxAdvertisingDataLength()
     return BT_NO_ERROR;
 }
 
+int32_t BluetoothHostImpl::GetConnectedBLEDevices(int32_t bleProfile, std::vector<std::string>& connectedDevices)
+{
+    return BT_NO_ERROR;
+}
+
 int32_t BluetoothHostImpl::GetDeviceType(int32_t transport, const std::string& address)
 {
     return BT_NO_ERROR;
@@ -291,7 +298,7 @@ int32_t BluetoothHostImpl::GetPairState(int32_t transport, const std::string& ad
     return BT_NO_ERROR;
 }
 
-int32_t BluetoothHostImpl::StartPair(int32_t transport, const std::string& address)
+int32_t BluetoothHostImpl::StartPair(int32_t transport, const BluetoothRawAddress &bluetoothRawAddress)
 {
     return BT_NO_ERROR;
 }
@@ -507,5 +514,7 @@ int32_t BluetoothHostImpl::NotifyDialogResult(uint32_t dialogType, bool dialogRe
 {
     return 0;
 }
+
+void BluetoothHostImpl::SetCallingPackageName(const std::string& address, const std::string& packageName) {}
 } // namespace Bluetooth
 } // namespace OHOS

@@ -23,7 +23,6 @@
 #include "WindowView.h"
 #include "base/log/log.h"
 #include "foundation/appframework/arkui/uicontent/ui_content.h"
-#include "shell/common/vsync_waiter.h"
 #include "transaction/rs_interfaces.h"
 #include "virtual_rs_window.h"
 #include "StageViewController.h"
@@ -1104,6 +1103,15 @@ void Window::DelayNotifyUIContentIfNeeded()
         uiContent_->NotifySurfaceDestroyed();
         delayNotifySurfaceDestroyed_ = false;
     }
+
+    if (delayNotifyFocusChanged_) {
+        if (isFocused_) {
+            uiContent_->Focus();
+        } else {
+            uiContent_->UnFocus();
+        }
+        delayNotifyFocusChanged_ = false;
+    }
 }
 
 WMError Window::SetUIContent(const std::string& contentInfo,
@@ -1133,8 +1141,8 @@ WMError Window::SetUIContent(const std::string& contentInfo,
     uiContent_ = std::move(uiContent);
 
     DelayNotifyUIContentIfNeeded();
-    if (applicationForeground_) {
-        NSLog(@"Window::SetUIContent : applicationForeground_ is true, call uiContent Foreground");
+    NSLog(@"applicationState is %ld", (long)[UIApplication sharedApplication].applicationState);
+    if ([UIApplication sharedApplication].applicationState != UIApplicationStateBackground) {
         uiContent_->Foreground();
     }
     LOGI("Window::SetUIContent : End!!!");
@@ -1211,6 +1219,8 @@ void Window::WindowFocusChanged(bool hasWindowFocus)
             LOGI("Window: notify uiContent UnFocus");
             uiContent_->UnFocus();
         }
+    } else {
+        delayNotifyFocusChanged_ = true;
     }
     if (isActive_ != hasWindowFocus) {
         isActive_ = hasWindowFocus;

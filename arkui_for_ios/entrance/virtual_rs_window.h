@@ -517,6 +517,7 @@ private:
     bool delayNotifySurfaceCreated_ = false;
     bool delayNotifySurfaceChanged_ = false;
     bool delayNotifySurfaceDestroyed_ = false;
+    bool delayNotifyFocusChanged_ = false;
     uint32_t windowId_ = 0;
     uint32_t parentId_ = 0;
     WindowMode windowMode_;
@@ -526,7 +527,7 @@ private:
     float keyBoardHieght_ = 0;
     WindowState state_ { WindowState::STATE_INITIAL };
     WindowStatus status_ { WindowStatus::WINDOW_STATUS_UNDEFINED };
-    bool applicationForeground_ = true;
+    bool applicationForeground_ = false;
 
     static void AddToWindowMap(std::shared_ptr<Window> window);
     static void DeleteFromWindowMap(std::shared_ptr<Window> window);

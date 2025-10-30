@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,6 +29,8 @@ import android.widget.FrameLayout;
 
 import androidx.fragment.app.Fragment;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -36,6 +38,7 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import ohos.ace.adapter.AceEnv;
 import ohos.ace.adapter.AcePlatformPlugin;
 import ohos.ace.adapter.ArkUIXPluginRegistry;
 import ohos.ace.adapter.PluginContext;
@@ -44,6 +47,8 @@ import ohos.ace.adapter.WindowViewAospInterface;
 import ohos.ace.adapter.WindowViewBuilder;
 import ohos.ace.adapter.capability.bridge.BridgeManager;
 import ohos.ace.adapter.capability.grantresult.GrantResult;
+import ohos.ace.adapter.capability.keyboard.KeyboardHeightObserver;
+import ohos.ace.adapter.capability.keyboard.KeyboardHeightProvider;
 import ohos.ace.adapter.capability.video.AceVideoPluginAosp;
 import ohos.ace.adapter.capability.web.AceWebPluginAosp;
 import ohos.ace.adapter.capability.web.AceWebPluginBase;
@@ -57,7 +62,7 @@ import ohos.ace.adapter.capability.platformview.AcePlatformViewPluginAosp;
  *
  * @since 1
  */
-public class StageFragment extends Fragment {
+public class StageFragment extends Fragment implements KeyboardHeightObserver {
     private static final String LOG_TAG = "StageFragment";
 
     private static final String INSTANCE_DEFAULT_NAME = "default";
@@ -126,6 +131,25 @@ public class StageFragment extends Fragment {
 
     private boolean isBackground = true;
 
+    private KeyboardHeightProvider keyboardHeightProvider;
+
+    @Override
+    public void onKeyboardHeightChanged(int height) {
+        if (windowView != null) {
+            windowView.keyboardHeightChanged(height);
+        }
+        if (platformPlugin != null) {
+            platformPlugin.keyboardHeightChanged(height);
+        }
+    }
+
+    @Override
+    public void onAvoidAreaChanged() {
+        if (windowView != null) {
+            windowView.avoidAreaChanged();
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Log.i(LOG_TAG, "OnCreate called, instance name:" + getInstanceName());
@@ -150,9 +174,19 @@ public class StageFragment extends Fragment {
         fragmentDelegate.dispatchOnCreate(getInstanceName(), params);
 
         initPlatformPlugin(this.getActivity(), instanceId, windowView);
-        initBridgeManager();
         initArkUIXPluginRegistry();
         Trace.endSection();
+
+        keyboardHeightProvider = new KeyboardHeightProvider(this.getActivity());
+        keyboardHeightProvider.setKeyboardHeightObserver(this);
+        windowView.getView().post(new Runnable() {
+            /**
+             * Called from the thread that created the view hierarchy
+             */
+            public void run() {
+                keyboardHeightProvider.start();
+            }
+        });
     }
 
     @Override
@@ -280,11 +314,17 @@ public class StageFragment extends Fragment {
         fragmentDelegate.dispatchOnDestroy(getInstanceName());
         windowView.destroy();
         arkUIXPluginRegistry.unRegistryAllPlugins();
-        BridgeManager.unRegisterBridgeManager(instanceId);
+        keyboardHeightProvider.close();
         if (platformPlugin != null) {
             platformPlugin.release();
             Log.i(LOG_TAG, "StageFragment onDestroy releseResRegister called");
         }
+    }
+
+    @Override
+    public void dump(String prefix, FileDescriptor fd, PrintWriter writer, String[] args) {
+        Log.i(LOG_TAG, "StageFragment dump called");
+        AceEnv.dump(instanceId, prefix, fd, writer, args);
     }
 
     /**
@@ -544,18 +584,6 @@ public class StageFragment extends Fragment {
         grantResultsClass.onRequestPremissionCallback(permissions, grantResults);
     }
 
-    private void initBridgeManager() {
-        Trace.beginSection("StageFragment::initBridgeManager");
-        if (bridgeManager == null) {
-            getBridgeManager();
-        }
-        if (BridgeManager.findBridgeManager(instanceId) == null) {
-            bridgeManager.nativeInit(instanceId);
-            BridgeManager.registerBridgeManager(instanceId, bridgeManager);
-        }
-        Trace.endSection();
-    }
-
     /**
      * Initialize arkui-x plugins and arkui-x plugins registry.
      */
@@ -573,7 +601,7 @@ public class StageFragment extends Fragment {
      */
     public BridgeManager getBridgeManager() {
         if (bridgeManager == null) {
-            bridgeManager = new BridgeManager(instanceId);
+            bridgeManager = BridgeManager.getInstance();
         }
         return bridgeManager;
     }

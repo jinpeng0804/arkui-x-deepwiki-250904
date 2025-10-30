@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -53,6 +53,8 @@ public class TextInputPluginAosp extends TextInputPluginBase implements TextInpu
 
     // Indicate whether need to call IMM restartInput.
     private boolean isRestartInputPending = false;
+
+    private boolean stopBackPress = true;
 
     private InputConnectionWrapper wrapper = null;
 
@@ -122,7 +124,7 @@ public class TextInputPluginAosp extends TextInputPluginBase implements TextInpu
         outAttrs.initialSelStart = Selection.getSelectionStart(editable);
         outAttrs.initialSelEnd = Selection.getSelectionEnd(editable);
         wrapper = new InputConnectionWrapper(view, clientId(), delegate, editable, hint);
-        return wrapper;
+        return wrapInputConnection(wrapper);
     }
 
     /**
@@ -156,6 +158,7 @@ public class TextInputPluginAosp extends TextInputPluginBase implements TextInpu
                 public void run() {
                     view.requestFocus();
                     if (imm != null) {
+                        imm.restartInput(view);
                         imm.showSoftInput(view, 0);
                     }
                 }
@@ -181,11 +184,34 @@ public class TextInputPluginAosp extends TextInputPluginBase implements TextInpu
             });
     }
 
+    /**
+     * Finish composing.
+     */
+    @Override
+    public void finishComposing() {
+        ALog.d(LOG_TAG, "finishComposing");
+        runOnUIThread(
+            new Runnable() {
+                /**
+                 * Finish composing.
+                 */
+                public void run() {
+                    if (imm != null) {
+                        imm.restartInput(view);
+                    }
+                }
+            });
+    }
+
     @Override
     public void onTextInputErrorTextChanged(String errorText) {
         if (wrapper != null) {
             wrapper.updateInputFilterErrorText(errorText);
         }
+    }
+
+    public boolean isStopBackPress() {
+        return stopBackPress;
     }
 
     /**
@@ -225,6 +251,7 @@ public class TextInputPluginAosp extends TextInputPluginBase implements TextInpu
             return;
         }
         hint = state.getHint();
+        stopBackPress = state.getStopBackPress();
         if (!isRestartInputPending && state.getText().equals(editable.toString())) {
             applyStateToSelection(state);
 
@@ -245,6 +272,9 @@ public class TextInputPluginAosp extends TextInputPluginBase implements TextInpu
             }
             isRestartInputPending = false;
         }
+        int selectionStart = Selection.getSelectionStart(editable);
+        int selectionEnd = Selection.getSelectionEnd(editable);
+        setSelectedRange(new SelectedRange(selectionStart, selectionEnd));
     }
 
     @Override

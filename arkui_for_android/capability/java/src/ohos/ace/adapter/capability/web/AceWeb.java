@@ -23,11 +23,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.Point;
+import android.net.http.SslError;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
-import android.view.Display;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -41,6 +40,7 @@ import android.webkit.HttpAuthHandler;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
 import android.webkit.PermissionRequest;
+import android.webkit.SslErrorHandler;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebBackForwardList;
@@ -56,6 +56,7 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.media.MediaMetadataRetriever;
 import android.os.Handler;
+import android.os.Looper;
 import java.util.HashMap;
 import java.util.ArrayList;
 import android.animation.ValueAnimator;
@@ -68,11 +69,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import ohos.ace.adapter.ALog;
 import ohos.ace.adapter.IAceOnResourceEvent;
+import ohos.ace.adapter.capability.web.AceWeb.WebviewBroadcastReceive;
 import ohos.ace.adapter.capability.web.AceWebConsoleMessageObject;
 import ohos.ace.adapter.capability.web.AceWebErrorReceiveObject;
 import ohos.ace.adapter.capability.web.AceWebHttpErrorReceiveObject;
@@ -89,7 +92,11 @@ import java.net.URL;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
 import ohos.ace.adapter.capability.web.AceWebScrollObject;
+import ohos.ace.adapter.capability.web.AceWebSchemeHandler;
+import ohos.ace.adapter.capability.web.AceWebNestedScrollOptionsExtObject;
 
 /**
  * This class handles the lifecycle of a AceWebview.
@@ -144,9 +151,11 @@ public class AceWeb extends AceWebBase {
     private static final String NTC_MIXED_MODE = "mixedMode";
     private static final String NTC_DOM_STORAGE_ACCESS = "domStorageAccess";
     private static final String NTC_CACHE_MODE = "cacheMode";
+    private static final String NTC_FILE_ACCESS = "fileAccess";
     private static final String NTC_IMAGE_ACCESS = "imageAccess";
     private static final String NTC_JAVASCRIPT_ACCESS = "javascriptAccess";
     private static final String NTC_MIN_FONT_SIZE = "minFontSize";
+    private static final String NTC_TEXT_ZOOM_RATIO = "textZoomRatio";
     private static final String NTC_HORIZONTAL_SCROLLBAR_ACCESS = "horizontalScrollBarAccess";
     private static final String NTC_VERTICAL_SCROLLBAR_ACCESS = "verticalScrollBarAccess";
     private static final String NTC_BACKGROUND_COLOR = "backgroundColor";
@@ -166,6 +175,11 @@ public class AceWeb extends AceWebBase {
     private static final String WEB_DOWNLOAD_FAILED_EVENT = "webDownloadFailedEvent";
 
     private static final String WEB_DOWNLOAD_COMPLETE_EVENT = "webDownloadCompleteEvent";
+
+    private static final String WEBVIEW_NESTEDSCROLL_UP = "scrollUp";
+    private static final String WEBVIEW_NESTEDSCROLL_DOWN = "scrollDown";
+    private static final String WEBVIEW_NESTEDSCROLL_LEFT = "scrollLeft";
+    private static final String WEBVIEW_NESTEDSCROLL_RIGHT = "scrollRight";
 
     private static final int NO_ERROR = 0;
 
@@ -221,9 +235,15 @@ public class AceWeb extends AceWebBase {
 
     private static final int CACHE_MODE_DEFAULT_VALUE = -1;
 
-    private static final int RECEIVER_NOT_EXPORTED = 0x4;
+    private static final int RECEIVER_EXPORTED = 0x2;
 
     private static final int ANDROID_VERSION_TIRAMISU = 33;
+
+    private static final long THREAD_TIME_OUT = 1000L;
+
+    private static final int WEB_TEXT_ZOOM = 100;
+
+    private static final int DEFAULT_LAYOUT_SIZE = 1;
 
     private static String currentPageUrl;
 
@@ -281,6 +301,20 @@ public class AceWeb extends AceWebBase {
     private HashMap<String, AceWebDownloadItemObject> webDownloadItemMap_ =
         new HashMap<String, AceWebDownloadItemObject>();
 
+    private ArrayList<String> webSchemeHandlerList = new ArrayList<>();
+
+    private final AtomicReference<Boolean> resultRef = new AtomicReference<>(false);
+
+    private boolean isMainFrame = false;
+
+    private String referrer;
+
+    private float touchStartX;
+    private float touchStartY;
+    private boolean isNeedParallelScroll = false;
+
+    private AceWebNestedScrollOptionsExtObject nestedScrollOptionsExtObject = new AceWebNestedScrollOptionsExtObject();
+
     public AceWeb(long id, Context context, View view, IAceOnResourceEvent callback) {
         super(id, callback);
         this.callback = callback;
@@ -298,6 +332,16 @@ public class AceWeb extends AceWebBase {
 
     @Override
     public void release() {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            ALog.w(LOG_TAG, "release main thread");
+            doRelease();
+        } else {
+            ALog.w(LOG_TAG, "release main thread post");
+            new Handler(Looper.getMainLooper()).post(this::doRelease);
+        }
+    }
+
+    private void doRelease() {
         if (webView != null) {
             removeWebFromSurface(webView);
             webView.destroy();
@@ -317,15 +361,126 @@ public class AceWeb extends AceWebBase {
     public class AceWebView extends WebView {
         private static final String LOG_TAG = "AceWebView";
 
+        private static final float SCROLL_THRESHOLD = 10.0f;
+        private static final int SCROLL_END_DELAY_THRESHOLD = 150;
+
+        private Handler mScrollHandler;
+        private Runnable mScrollRunnable;
+        private boolean mIsScrolling = false;
+        private int mLastScrollX = 0;
+        private int mLastScrollY = 0;
+
+        private float startX = 0.0f;
+        private float startY = 0.0f;
+        private boolean isScrolling = false;
+        private boolean isTouching = false;
+        private boolean isSendEnd = false;
+
         public AceWebView(Context context) {
             super(context);
+            mScrollHandler = new Handler(Looper.getMainLooper());
         }
 
         @Override
         protected void onScrollChanged(int l, int t, int oldl, int oldt) {
             super.onScrollChanged(l, t, oldl, oldt);
-            AceWebScrollObject object = new AceWebScrollObject(l, t);
-            AceWeb.this.fireScrollChanged(object);
+
+            if (!mIsScrolling) {
+                mIsScrolling = true;
+                AceWebScrollObject object = new AceWebScrollObject(l, t);
+                AceWeb.this.fireScrollWillStart(object);
+
+                int deltaX = l - mLastScrollX;
+                int deltaY = t - mLastScrollY;
+                object = new AceWebScrollObject(deltaX, deltaY);
+                AceWeb.this.fireScrollStart(object);
+
+                object = new AceWebScrollObject(l, t, webView.computeHorizontalScrollRange(),
+                    (int) ((webView.getContentHeight() - 1) * getScale()), webView.getWidth(), webView.getHeight());
+                AceWeb.this.fireScrollChanged(object);
+            } else {
+                AceWebScrollObject object = new AceWebScrollObject(l, t, webView.computeHorizontalScrollRange(),
+                    (int) ((webView.getContentHeight() - 1) * getScale()), webView.getWidth(), webView.getHeight());
+                AceWeb.this.fireScrollChanged(object);
+            }
+
+
+            if (mScrollRunnable != null) {
+                mScrollHandler.removeCallbacks(mScrollRunnable);
+            }
+
+            if (mLastScrollX == l && mLastScrollY == t) {
+                if (!isTouching) {
+                    sendScrollEndEvent();
+                } else {
+                    isSendEnd = true;
+                }
+            }
+            mLastScrollX = l;
+            mLastScrollY = t;
+        }
+
+        @Override
+        protected boolean overScrollBy(int deltaX, int deltaY,
+                                       int scrollX, int scrollY,
+                                       int scrollRangeX, int scrollRangeY,
+                                       int maxOverScrollX, int maxOverScrollY,
+                                       boolean isTouchEvent) {
+            onScrollChanged(scrollX + deltaX, scrollY + deltaY, scrollX, scrollY);
+            return super.overScrollBy(deltaX, deltaY, scrollX, scrollY,
+                    scrollRangeX, scrollRangeY, maxOverScrollX, maxOverScrollY, isTouchEvent);
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    startX = event.getX();
+                    startY = event.getY();
+                    isScrolling = false;
+                    isTouching = true;
+
+                    if (getParent() instanceof ViewGroup) {
+                        getParent().requestDisallowInterceptTouchEvent(true);
+                    }
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    float deltaX = Math.abs(event.getX() - startX);
+                    float deltaY = Math.abs(event.getY() - startY);
+
+                    if (!isScrolling && (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD)) {
+                        isScrolling = true;
+                        if (getParent() instanceof ViewGroup) {
+                            getParent().requestDisallowInterceptTouchEvent(true);
+                        }
+                    }
+                    isTouching = true;
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    if (getParent() instanceof ViewGroup) {
+                        getParent().requestDisallowInterceptTouchEvent(false);
+                    }
+                    isScrolling = false;
+                    isTouching = false;
+                    if (isSendEnd) {
+                        sendScrollEndEvent();
+                    }
+                    break;
+            }
+            return super.onTouchEvent(event);
+        }
+
+        private void sendScrollEndEvent() {
+            mScrollRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    mIsScrolling = false;
+                    AceWebScrollObject object = new AceWebScrollObject(mLastScrollX, mLastScrollY);
+                    AceWeb.this.fireScrollEnd(object);
+                }
+            };
+            mScrollHandler.postDelayed(mScrollRunnable, SCROLL_END_DELAY_THRESHOLD);
         }
     }
 
@@ -507,7 +662,8 @@ public class AceWeb extends AceWebBase {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 isErrorOccurred = true;
-                AceWebErrorReceiveObject object = new AceWebErrorReceiveObject(error, request);
+                AceWebErrorReceiveObject object = new AceWebErrorReceiveObject(
+                    error.getErrorCode(), error.getDescription().toString(), request);
                 AceWeb.this.fireErrorReceive(object);
             }
 
@@ -590,7 +746,7 @@ public class AceWeb extends AceWebBase {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 AceWebOverrideUrlObject object = new AceWebOverrideUrlObject(request);
-                return AceWeb.this.fireUrlLoadIntercept(object);
+                return AceWeb.this.fireUrlLoadIntercept(object) || AceWeb.this.fireOverrideUrlLoading(object);
             }
 
             @Override
@@ -606,13 +762,26 @@ public class AceWeb extends AceWebBase {
 
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                isMainFrame = request.isForMainFrame();
+                referrer = request.getRequestHeaders() != null ? request.getRequestHeaders().get("Referer") : "";
                 AceWebResourceRequestObject object = new AceWebResourceRequestObject(request);
                 Object response = AceWeb.this.fireShouldInterceptRequest(object);
                 if (response instanceof WebResourceResponse) {
                     return (WebResourceResponse) response;
                 } else {
-                    return null;
+                    return handleSchemeRequest(view, request);
                 }
+            }
+
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                if (isMainFrame) {
+                    AceWebSslErrorReceiveObject sslErrorObject = new AceWebSslErrorReceiveObject(error, handler);
+                    AceWeb.this.fireSslErrorReceive(sslErrorObject);
+                }
+                AceWebAllSslErrorReceiveObject allSslErrorObject = new AceWebAllSslErrorReceiveObject(
+                        error, handler, referrer, isMainFrame);
+                AceWeb.this.fireAllSslErrorReceive(allSslErrorObject);
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
@@ -824,6 +993,66 @@ public class AceWeb extends AceWebBase {
         firePageFinished(url);
     }
 
+    private WebResourceResponse handleSchemeRequest(WebView view, WebResourceRequest request) {
+        try {
+            if (!request.isForMainFrame()) {
+                return null;
+            }
+            for (String scheme : webSchemeHandlerList) {
+                if (!request.getUrl().getScheme().equals(scheme)) {
+                    continue;
+                }
+                AceWebSchemeHandler handler = new AceWebSchemeHandler(request);
+                CountDownLatch latch = new CountDownLatch(1);
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    boolean isIntercepted = AceWebPluginBase.onSchemeHandlerRequestStart(scheme, handler);
+                    resultRef.set(isIntercepted);
+                    latch.countDown();
+                });
+                boolean isCompleted = latch.await(THREAD_TIME_OUT, TimeUnit.MILLISECONDS);
+                if (!isCompleted) {
+                    ALog.e(LOG_TAG, "onSchemeHandlerRequestStart timed out waiting for result.");
+                    resultRef.set(false);
+                }
+                if (resultRef.get().booleanValue()) {
+                    return handleInterceptRequest(view, request, handler, scheme);
+                }
+                return null;
+            }
+        } catch (InterruptedException e) {
+            ALog.e(LOG_TAG, "shouldInterceptRequest InterruptedException error");
+            return null;
+        }
+        return null;
+    }
+
+    private WebResourceResponse handleInterceptRequest(
+        WebView view, WebResourceRequest request, AceWebSchemeHandler handler, String scheme) {
+        if (handler.getResponseErrCode() != 0) {
+            AceWebErrorReceiveObject errObject = new AceWebErrorReceiveObject(
+                handler.getResponseErrCode(), handler.getResponseErrInfo(), request);
+            AceWeb.this.fireErrorReceive(errObject);
+        }
+        if (handler.getErrorCode() != 0) {
+            AceWebErrorReceiveObject errObject = new AceWebErrorReceiveObject(
+                handler.getErrorCode(), handler.getErrorInfo(), request);
+            AceWeb.this.fireErrorReceive(errObject);
+        }
+        if (!handler.getResponseUrl().isEmpty() && handler.getResponseErrCode() == 0) {
+            new Handler(Looper.getMainLooper()).post(() -> {
+                AceWebPluginBase.onSchemeHandlerRequestStop(scheme, handler);
+                view.loadUrl(handler.getResponseUrl());
+            });
+            return null;
+        }
+        if (handler.getResponseFinish() || handler.getResponseFail()) {
+            new Handler(Looper.getMainLooper()).post(() -> {
+                AceWebPluginBase.onSchemeHandlerRequestStop(scheme, handler);
+            });
+        }
+        return handler.getResponse();
+    }
+
     /**
      * This is called to set the websetting.
      *
@@ -840,7 +1069,7 @@ public class AceWeb extends AceWebBase {
         webSettings.setDisplayZoomControls(false);
 
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowFileAccess(false);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         webSettings.setLoadsImagesAutomatically(true);
         webSettings.setDefaultTextEncodingName("utf-8");
@@ -897,12 +1126,7 @@ public class AceWeb extends AceWebBase {
             params = new FrameLayout.LayoutParams((int) width, (int) height);
             params.setMargins((int) left, (int) top, 0, 0);
         } else {
-            Display display = activity.getWindowManager().getDefaultDisplay();
-            Point size = new Point();
-            display.getSize(size);
-            int newWidth = size.x;
-            int newHeight = size.y;
-            params = new FrameLayout.LayoutParams(newWidth, newHeight);
+            params = new FrameLayout.LayoutParams(DEFAULT_LAYOUT_SIZE, DEFAULT_LAYOUT_SIZE);
         }
         return params;
     }
@@ -1196,10 +1420,25 @@ public class AceWeb extends AceWebBase {
         MotionEvent eventClone = MotionEvent.obtain(motionEvent);
         float deltaX = eventClone.getX() - left;
         float deltaY = eventClone.getY() - top;
-        if ((deltaX > 0) && (deltaX < width) && (deltaY > 0) && (deltaY < height)) {
-            eventClone.offsetLocation(-left, -top);
-            webView.dispatchTouchEvent(eventClone);
+
+        if (eventClone.getAction() == MotionEvent.ACTION_DOWN) {
+            touchStartX = eventClone.getX();
+            touchStartY = eventClone.getY();
         }
+
+        float touchDeltaX = 0.0f;
+        float touchDeltaY = 0.0f;
+        touchDeltaX = eventClone.getX() - touchStartX;
+        touchDeltaY = eventClone.getY() - touchStartY;
+
+        if (Float.compare(touchDeltaX, 0.0f) != 0 || Float.compare(touchDeltaY, 0.0f) != 0) {
+            isNeedParallelScroll = nestedScrollOptionsExtObject.needParallelScroll(touchDeltaX, touchDeltaY);
+        }
+
+        if (!isNeedParallelScroll) {
+            eventClone.offsetLocation(-left, -top);
+        }
+        webView.dispatchTouchEvent(eventClone);
         motionEvent = null;
     }
 
@@ -1239,6 +1478,24 @@ public class AceWeb extends AceWebBase {
                 return SUCCESS_TAG;
             } catch (NumberFormatException ignored) {
                 ALog.w(LOG_TAG, "updateWebLayout NumberFormatException");
+                return FAIL_TAG;
+            }
+        }
+        return FAIL_TAG;
+    }
+
+    @Override
+    public String setNestedScrollExt(Map<String, String> params) {
+        if (webView != null) {
+            try {
+                nestedScrollOptionsExtObject.set(
+                Integer.parseInt(params.get(WEBVIEW_NESTEDSCROLL_UP)),
+                Integer.parseInt(params.get(WEBVIEW_NESTEDSCROLL_DOWN)),
+                Integer.parseInt(params.get(WEBVIEW_NESTEDSCROLL_LEFT)),
+                Integer.parseInt(params.get(WEBVIEW_NESTEDSCROLL_RIGHT)));
+                return SUCCESS_TAG;
+            } catch (NumberFormatException ignored) {
+                ALog.w(LOG_TAG, "setNestedScrollExt NumberFormatException");
                 return FAIL_TAG;
             }
         }
@@ -1365,6 +1622,22 @@ public class AceWeb extends AceWebBase {
     }
 
     @Override
+    public String fileAccess(Map<String, String> params) {
+        if (webView == null || !params.containsKey(NTC_FILE_ACCESS)) {
+            return FAIL_TAG;
+        }
+        boolean access = false;
+        try {
+            int accessNum = Integer.parseInt(params.get(NTC_FILE_ACCESS));
+            access = accessNum != 0;
+        } catch (NumberFormatException ignored) {
+            return getErrorInfo("fileAccess");
+        }
+        webView.getSettings().setAllowFileAccess(access);
+        return SUCCESS_TAG;
+    }
+
+    @Override
     public String imageAccess(Map<String, String> params) {
         if (!params.containsKey(NTC_IMAGE_ACCESS) || webView == null) {
             return FAIL_TAG;
@@ -1411,6 +1684,24 @@ public class AceWeb extends AceWebBase {
             return FAIL_TAG;
         }
         webView.getSettings().setMinimumFontSize(fontSize);
+        return SUCCESS_TAG;
+    }
+
+    @Override
+    public String textZoomRatio(Map<String, String> params) {
+        if (!params.containsKey(NTC_TEXT_ZOOM_RATIO) || webView == null) {
+            ALog.e(LOG_TAG, "textZoomRatio failed");
+            return FAIL_TAG;
+        }
+        int textZoom = WEB_TEXT_ZOOM;
+        try {
+            int textZoomRatio = Integer.parseInt(params.get(NTC_TEXT_ZOOM_RATIO));
+            textZoom = textZoomRatio;
+        } catch (NumberFormatException ignored) {
+            ALog.w(LOG_TAG, "textZoom NumberFormatException");
+            return FAIL_TAG;
+        }
+        webView.getSettings().setTextZoom(textZoom);
         return SUCCESS_TAG;
     }
 
@@ -2049,7 +2340,7 @@ public class AceWeb extends AceWebBase {
         itFilter.addAction(WEB_DOWNLOAD_START_EVENT);
         itFilter.addAction(WEB_DOWNLOAD_FAILED_EVENT);
         if (Build.VERSION.SDK_INT >= ANDROID_VERSION_TIRAMISU) {
-            context.registerReceiver(webviewBroadcastReceive_, itFilter, RECEIVER_NOT_EXPORTED);
+            context.registerReceiver(webviewBroadcastReceive_, itFilter, RECEIVER_EXPORTED);
         } else {
             context.registerReceiver(webviewBroadcastReceive_, itFilter);
         }
@@ -2388,5 +2679,38 @@ public class AceWeb extends AceWebBase {
         jsObjectName = null;
         jsSyncMethod = null;
         jsAsyncMethod = null;
+    }
+
+    /**
+     * Registers a custom scheme handler for the WebView.
+     *
+     * @param scheme The URL scheme to be handled (e.g., "myapp").
+     * @return true if the scheme handler was successfully registered; false if the WebView is not initialized.
+     */
+    @Override
+    public boolean setWebSchemeHandler(String scheme) {
+        webSchemeHandlerList.add(scheme);
+        return true;
+    }
+
+    /**
+     * Clears all registered web scheme handlers from the handler list.
+     * This method removes all elements from the internal list that manages
+     * custom web scheme handlers, effectively resetting the handler state.
+     */
+    @Override
+    public void clearWebSchemeHandler() {
+        webSchemeHandlerList.clear();
+    }
+
+    /**
+     * Retrieves the default user agent string for the web view.
+     *
+     * @return A {@link String} representing the default user agent.
+     * This user agent is used to identify the application to web servers.
+     */
+    @Override
+    public String getDefaultUserAgent() {
+        return WebSettings.getDefaultUserAgent(context);
     }
 }
